@@ -25,22 +25,38 @@ MODEL_SPELLING = "gpt-4o-mini"
 
 st.set_page_config(page_title="Marine Snow Chatbot", page_icon="🌊")
 st.title("🌊 Marine Snow Learning Assistant – RAG + IE + Anthropomorphism Chatbot")
-
 # ============================================================
-# AVATARS & GREETINGS
+# AVATARS + GREETING (corrected & ordered)
 # ============================================================
 
 AVATARS = {
     0: "🟧",   # mechanical assistant
     1: "🧑🏻",   # neutral emoji avatar
-    2: "https://github.com/einfachManu/Bachelor_thesis/blob/main/Anthropomorpic_icon.png"  
+    2: "https://raw.githubusercontent.com/einfachManu/Bachelor_thesis/main/Anthropomorpic_icon.png"
 }
 
-GREETINGS = {
-    0: "",
-    1: "Hello.",
-    2: "Hi! Schön, dass du da bist 😊"
+GREETING = {
+    0: "Hallo. Ich beantworte Fragen rund um Meeresschnee in einem sachlichen, klaren Stil.",
+    1: "Hallo. Ich unterstütze dich bei Fragen rund um das Thema Meeresschnee und liefere dir klare, präzise Informationen.",
+    2: "Hi, ich bin Milly, deine persönliche Expertin für Meeresschnee. Frag mich jederzeit und ich helfe dir gern weiter!"
 }
+
+# ============================================================
+# SELECT ANTHRO LEVEL
+# ============================================================
+
+level = st.radio("Anthropomorphiestufe:", [0, 1, 2], horizontal=True)
+assistant_avatar = AVATARS[level]
+
+# ============================================================
+# SHOW GREETING ONLY ONCE
+# ============================================================
+
+if "welcome_shown" not in st.session_state:
+    with st.chat_message("assistant", avatar=assistant_avatar):
+        st.write(GREETING[level])
+    st.session_state["welcome_shown"] = True
+
 
 # ============================================================
 # INFORMATION UNITS (3 per topic)
@@ -48,7 +64,7 @@ GREETINGS = {
 
 IEs = {
     "definition": [
-        "Meeresschnee besteht aus vielen kleinen Teilchen, die sich im Meer zu sichtbaren Flocken verbinden.",
+        "Meeresschnee beschreibt die Zusammensetzung vielen kleinen Teilchen, die sich im Meer zu sichtbaren Flocken verbinden.",
         "Diese Flocken enthalten abgestorbenes Material, winzige Lebewesen sowie kleine Mineralteilchen.",
         "Die Flocken sind leicht, empfindlich und können verschiedene Formen wie Klumpen, Fäden oder Platten annehmen."
     ],
@@ -89,24 +105,28 @@ Anthropomorphism Level 0:
 - No emotions
 - No empathy
 - No emojis
-- Very mechanical tone
+- Very mechanical, formal tone
 """,
 
     1: """
 Anthropomorphism Level 1:
 - Light warmth allowed
 - Personal pronouns allowed
-- No emojis
+- occasional emotional expressions
+- light emoji usage
+- friendly, semi friendly tone
 """,
 
     2: """
 Anthropomorphism Level 2:
 - Warm, supportive tone
-- Personal pronouns
+- Personal pronouns allowed
 - Emotional expressions
-- 1–3 emojis
+- emojis allowed
+- converstional, engaging tone
 """
 }
+
 
 # ============================================================
 # RAG SETUP — Persistent ChromaDB
@@ -197,36 +217,155 @@ Question: "{user_input}"
 # ============================================================
 # INTENT CLASSIFIER (TOPIC vs TERM)
 # ============================================================
+GENERIC_TERMS = [
+    "aggregat", "aggregation", "turbulenz", "strömung",
+    "organismus", "partikel", "sediment", "kohlenstoff"
+]
+
+TOPIC_TERMS = {
+    "formation": ["bildung", "entstehung", "formation"],
+    "sampling":  ["messung", "probe", "sampling"],
+    "importance": ["bedeutung", "relevanz", "wichtigkeit"],
+    "degradation": ["zerfall", "abbau", "degradation"],
+    "definition": ["definition", "beschreibung"]
+}
+
+def detect_term(user_input, threshold=82):
+    txt = user_input.lower()
+
+    # Check if it's likely a single-word meaning question
+    if len(txt.split()) <= 2:
+        return "GENERIC_TERM"
+
+    # Check generic terms
+    for term in GENERIC_TERMS:
+        if fuzz.partial_ratio(txt, term) >= threshold:
+            return "GENERIC_TERM"
+
+    # Check topic-related terms
+    for topic, tlist in TOPIC_TERMS.items():
+        for t in tlist:
+            if fuzz.partial_ratio(txt, t) >= threshold:
+                return topic  # return which topic it belongs to
+
+    return None
+
 
 def classify_intent(user_input):
-    prompt = f"""
-Classify into:
-TOPIC_INTENT → explanation of a Marine Snow topic
-TERM_INTENT → meaning of a single word
+    txt = user_input.lower().strip()
 
-User question: "{user_input}"
+    # ============================================================
+    # STEP 1: TERM DETECTION (FUZZY)
+    # ============================================================
 
-Return only TOPIC_INTENT or TERM_INTENT.
+    term_result = detect_term(txt)
+
+    # Grundtendenz setzen
+    if term_result is None:
+        heuristic_vote = "TOPIC_INTENT"
+    elif term_result == "GENERIC_TERM":
+        heuristic_vote = "TERM_INTENT"
+    else:
+        # term_result entspricht einem Topic -> TOPIC_INTENT
+        heuristic_vote = "TOPIC_INTENT"
+
+    # Sonderregel: Meeresschnee -> immer TOPIC_INTENT
+    if "meeresschnee" in txt:
+        heuristic_vote = "TOPIC_INTENT"
+
+    # ============================================================
+    # STEP 2: LLM VOTE 1
+    # ============================================================
+
+    prompt1 = f"""
+Klassifiziere diese Frage streng in TERM_INTENT oder TOPIC_INTENT.
+
+TERM_INTENT = Bedeutung eines einzelnen Wortes.
+TOPIC_INTENT = Frage zu einem wissenschaftlichen Konzept, Prozess oder Zusammenhang.
+
+Sonderregel: Meeresschnee -> immer TOPIC_INTENT.
+
+Frage: "{user_input}"
+
+Gib NUR TERM_INTENT oder TOPIC_INTENT zurück.
 """
-    r = client.chat.completions.create(
+
+    vote1 = client.chat.completions.create(
         model=MODEL_INTENT,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0
-    )
-    return r.choices[0].message.content.strip()
+        temperature=0,
+        messages=[{"role": "user", "content": prompt1}]
+    ).choices[0].message.content.strip().upper()
+
+    # ============================================================
+    # STEP 3: LLM VOTE 2 (kontrastiv)
+    # ============================================================
+
+    prompt2 = f"""
+Wiederhole die Klassifikation.
+
+TERM_INTENT = Bedeutung eines Einzelbegriffs.
+TOPIC_INTENT = Erklärung eines Themenfelds.
+
+Sonderregel: Meeresschnee -> TOPIC_INTENT.
+
+Frage: "{user_input}"
+
+Gib NUR das Label zurück.
+"""
+
+    vote2 = client.chat.completions.create(
+        model=MODEL_INTENT,
+        temperature=0,
+        messages=[{"role": "user", "content": prompt2}]
+    ).choices[0].message.content.strip().upper()
+
+    # ============================================================
+    # STEP 4: MAJORITY VOTE (3 Stimmen)
+    # ============================================================
+
+    votes = [heuristic_vote, vote1, vote2]
+    votes = [v.upper().strip() for v in votes]
+
+    if votes.count("TOPIC_INTENT") > votes.count("TERM_INTENT"):
+        return "TOPIC_INTENT"
+    else:
+        return "TERM_INTENT"
+
+
 
 # ============================================================
 # TOPIC CLASS MAPPING
 # ============================================================
 
-TOPIC_KEYWORDS = {
-    "definition": ["was ist", "definier", "meeresschnee"],
-    "importance": ["warum wichtig", "bedeutung"],
-    "sampling": ["probe", "messung", "sammeln"],
-    "formation": ["entsteht", "entstehung", "bildung"],
-    "degradation": ["abbau", "zerfall", "sinken", "drift"]
-}
+TOPIC_KEYWORDS = ["definition", "importance", "sampling", "formation", "degradation"]
 
+def classify_topic(user_input):
+    prompt = f"""
+Du bist ein strenger wissenschaftlicher Klassifizierer.
+
+Ordne die folgende Frage GENAU EINER der fünf Kategorien zu:
+
+1. definition     = Was ist Meeresschnee? Woraus besteht er? Was beschreibt er?
+2. importance     = Warum ist Meeresschnee wichtig? Welche Rolle spielt er?
+3. sampling       = Wie wird Meeresschnee gesammelt, gemessen oder beobachtet?
+4. formation      = Wie entsteht Meeresschnee? Welche Prozesse führen zu seiner Bildung?
+5. degradation    = Wie zerfällt, sinkt oder verschwindet Meeresschnee?
+
+REGELN:
+- Gib **nur das reine Label** zurück: definition / importance / sampling / formation / degradation
+- Keine zusätzlichen Wörter, keine Begründung.
+
+Frage:
+\"{user_input}\"
+"""
+
+    r = client.chat.completions.create(
+        model=MODEL_INTENT,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0
+    )
+    
+    return r.choices[0].message.content.strip().lower()
 def fuzzy_topic(user_input):
     txt = user_input.lower()
     for topic, keys in TOPIC_KEYWORDS.items():
@@ -289,11 +428,6 @@ def generate_explainer(text):
 if "chat" not in st.session_state:
     st.session_state.chat = []
 
-level = st.radio("Anthropomorphiestufe:", [0, 1, 2], horizontal=True)
-
-assistant_avatar = AVATARS[level]
-assistant_greeting = GREETINGS[level]
-
 if "chat" not in st.session_state:
     st.session_state.chat = []
 else:
@@ -323,12 +457,8 @@ if user_text:
         if intent == "TERM_INTENT":
             answer = generate_explainer(corrected)
         else:
-            topic = fuzzy_topic(corrected)
+            topic = classify_topic(corrected)
             answer = generate_IE_answer(topic, corrected, level)
-
-    # show greeting once per answer if level > 0
-    if assistant_greeting:
-        st.chat_message("assistant", avatar=assistant_avatar).write(assistant_greeting)
 
     st.chat_message("assistant", avatar=assistant_avatar).write(answer)
     st.session_state.chat.append({"role": "assistant", "content": answer, "avatar": assistant_avatar})
