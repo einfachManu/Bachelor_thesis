@@ -32,8 +32,8 @@ st.title("🌊 Marine Snow Learning Assistant – RAG + IE + Anthropomorphism Ch
 
 AVATARS = {
     0: "🟧",   # mechanical assistant
-    1: "🙂",   # neutral emoji avatar
-    2: "LLM_data_assistant-main/Anthropomorpic_icon.png"   
+    1: "🧑🏻",   # neutral emoji avatar
+    2: "https://github.com/einfachManu/Bachelor_thesis/blob/main/Anthropomorpic_icon.png"  
 }
 
 GREETINGS = {
