@@ -1,0 +1,10 @@
+version: '3'
+services:
+  data-assistant:
+    image: data-assistant:latest
+    build: ./app
+    command: streamlit run streamlit_agent/data_assistant_old.py --server.port 8051
+    volumes:
+      - ./streamlit_agent/:/app/streamlit_agent
+    ports:
+      - 8051:8051
