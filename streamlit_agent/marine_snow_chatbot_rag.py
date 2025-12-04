@@ -40,7 +40,16 @@ GREETING = {
     1: "Hallo. Ich unterstütze dich bei Fragen rund um das Thema Meeresschnee und liefere dir klare, präzise Informationen.",
     2: "Hi, ich bin Milly, deine persönliche Expertin für Meeresschnee. Frag mich jederzeit und ich helfe dir gern weiter!"
 }
+# ============================================================
+# INITIALIZE MEMORY
+# ============================================================
 
+if "context_memory" not in st.session_state:
+    st.session_state.context_memory = {
+        "last_topic": None,
+        "last_term": None,
+        "recent_messages": []
+    }
 # ============================================================
 # SELECT ANTHRO LEVEL
 # ============================================================
@@ -120,9 +129,9 @@ Anthropomorphism Level 1:
     2: """
 Anthropomorphism Level 2:
 - Warm, supportive tone
-- Personal pronouns allowed
-- Emotional expressions
-- emojis allowed
+- strong use of Personal pronouns 
+- strong Emotional expressions
+- strong emojis usage 
 - converstional, engaging tone
 """
 }
@@ -191,6 +200,29 @@ Return only the corrected text.
         temperature=0
     )
     return r.choices[0].message.content.strip()
+
+# ============================================================
+# REFERENCE RESOLUTION (er / der / das / warum wichtig?)
+# ============================================================
+
+def resolve_references(user_input):
+    txt = user_input.lower()
+    mem = st.session_state.context_memory
+
+    replacements = {
+        "er": mem["last_term"] or "Meeresschnee",
+        "ihn": mem["last_term"] or "Meeresschnee",
+        "ihm": mem["last_term"] or "Meeresschnee",
+        "der": mem["last_term"] or "Meeresschnee",
+        "das": mem["last_term"] or "Meeresschnee",
+        "dies": mem["last_term"] or "Meeresschnee"
+    }
+
+    for pron, ref in replacements.items():
+        if pron in txt.split():
+            txt = txt.replace(pron, ref)
+
+    return txt
 
 # ============================================================
 # OFF-TOPIC GATEKEEPER
@@ -383,7 +415,7 @@ def generate_IE_answer(topic, user_query, level):
     rag_text = rag_query(user_query)
 
     prompt = f"""
-Write a 550–700 character explanation.  
+Write a 550-700 character explanation.  
 You MUST include these three information units exactly once:
 
 IE1: {ies[0]}
@@ -422,43 +454,40 @@ def generate_explainer(text):
     return r.choices[0].message.content
 
 # ============================================================
-# STREAMLIT CHAT INTERFACE
+# CHAT LOOP
 # ============================================================
 
 if "chat" not in st.session_state:
     st.session_state.chat = []
 
-if "chat" not in st.session_state:
-    st.session_state.chat = []
-else:
-    # Falls noch alte Einträge ohne "avatar" existieren: Session leeren
-    if any(not isinstance(m, dict) or "avatar" not in m for m in st.session_state.chat):
-        st.session_state.chat = []
-
-# display chat history
 for m in st.session_state.chat:
     st.chat_message(m["role"], avatar=m["avatar"]).write(m["content"])
 
 user_text = st.chat_input("Frag mich etwas über Meeresschnee")
 
 if user_text:
+
     corrected = autocorrect(user_text)
+    resolved = resolve_references(corrected)
 
-    # log user message
-    st.session_state.chat.append({"role": "user", "content": user_text, "avatar": None})
+    st.session_state.context_memory["recent_messages"].append(corrected)
+    st.session_state.context_memory["recent_messages"] = st.session_state.context_memory["recent_messages"][-4:]
+
     st.chat_message("user").write(user_text)
+    st.session_state.chat.append({"role": "user", "content": user_text, "avatar": None})
 
-    # OFF TOPIC FILTER
-    if is_marine_snow_related(corrected) == "NO":
-        answer = "Ich kann nur Fragen zu Meeresschnee oder verwandten ozeanbiologischen Themen beantworten."
+    intent = classify_intent(resolved)
+
+    if intent == "TERM_INTENT":
+        st.session_state.context_memory["last_term"] = resolved.lower()
+        answer = generate_explainer(resolved)
+
     else:
-        intent = classify_intent(corrected)
-
-        if intent == "TERM_INTENT":
-            answer = generate_explainer(corrected)
-        else:
-            topic = classify_topic(corrected)
-            answer = generate_IE_answer(topic, corrected, level)
+        topic = classify_topic(resolved)
+        st.session_state.context_memory["last_topic"] = topic
+        answer = generate_IE_answer(topic, resolved, level)
 
     st.chat_message("assistant", avatar=assistant_avatar).write(answer)
     st.session_state.chat.append({"role": "assistant", "content": answer, "avatar": assistant_avatar})
+
+
