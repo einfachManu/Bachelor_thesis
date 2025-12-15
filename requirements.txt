@@ -2,7 +2,6 @@ streamlit>=1.20.0
 pandas
 openai
 openpyxl
-psycopg2
 python-dotenv
 langchain-core
 langchain-openai
