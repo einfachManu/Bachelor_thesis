@@ -291,7 +291,7 @@ if st.session_state.phase == "learning":
     mins = int(remaining) // 60
     secs = int(remaining) % 60
 
-    st.subheader(f"⏳ Restzeit: {mins}:{secs:02d}")
+    st.subheader(f"Restzeit: {mins}:{secs:02d}")
 
     if remaining <= 0:
         st.session_state.phase = "learning_done"
@@ -302,7 +302,7 @@ if st.session_state.phase == "learning":
     # ============================================================
 
     st.set_page_config(page_title="Marine Snow Chatbot", page_icon="🌊")
-    st.title("🌊 Marine Snow Learning Assistant")
+    st.title("Marine Snow Learning Assistant")
 
     level = st.radio("Anthropomorphiestufe:", [0, 1, 2], horizontal=True)
     AVATARS = {
