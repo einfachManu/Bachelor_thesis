@@ -141,7 +141,7 @@ Anthropomorphism Level 2:
 # RAG SETUP — Persistent ChromaDB
 # ============================================================
 
-PDF_PATH = "Characteristics_Dynamics_and_Significance_of_Marine_Snow.pdf"
+PDF_PATH = "streamlit_agent/relevante_Informationen_Paper.pdf"
 
 def load_chroma():
     client = chromadb.PersistentClient(path="./chroma_marine_snow")
@@ -426,6 +426,7 @@ Rules:
 - You may add connecting neutral sentences.
 - No new facts beyond the information units or the paper excerpt.
 - Full sentences only.
+- Answer in German.
 
 Paper Excerpt:
 {rag_text}
@@ -489,5 +490,52 @@ if user_text:
 
     st.chat_message("assistant", avatar=assistant_avatar).write(answer)
     st.session_state.chat.append({"role": "assistant", "content": answer, "avatar": assistant_avatar})
+
+def repeat_last_answer():
+    return st.session_state.context_memory["last_bot_answer"]
+
+def rephrase_last_answer(level):
+    last = st.session_state.context_memory["last_bot_answer"]
+
+    prompt = f"""
+Formuliere die folgende Antwort um, 
+behalte die Bedeutung exakt bei, 
+und verwende den Anthropomorphismus-Level {level}:
+
+{ANTHRO[level]}
+
+Text:
+{last}
+"""
+
+    r = client.chat.completions.create(
+        model=MODEL_INTENT,
+        temperature=0.3,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return r.choices[0].message.content
+
+def elaborate_last_answer(level, paragraph):
+    last = st.session_state.context_memory["last_bot_answer"]
+
+    prompt = f"""
+Erweitere die vorherige Antwort leicht, 
+ohne neue Fakten hinzuzufügen, 
+verwende dieselbe Anthropomorphiestufe ({level}) 
+und bleibe vollständig innerhalb dieses Kontextabsatzes:
+
+Abschnitt:
+{paragraph}
+
+Vorherige Antwort:
+{last}
+"""
+
+    r = client.chat.completions.create(
+        model=MODEL_IE,
+        temperature=0.2,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return r.choices[0].message.content
 
 
