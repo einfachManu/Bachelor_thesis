@@ -120,43 +120,50 @@ def get_next_user_id():
     # ============================================================
 
 IEs = {
-        "definition": [
-            "-kleine Aggregate >500 μm",
-            "-bestehen aus Mikroorganismen und Tonmineralien",
-            "-umfasst viele Aggregatearten",
-            "-Strukturen variieren von zerbrechlich bis robust",
-            "-Formen reichen von Kugeln bis Strängen"
-        ],
-        "importance": [
-            "-Transport organischen Materials in tiefere Zonen",
-            "-wichtige Nahrungsquelle",
-            "-Lebensraum für Kleinstlebewesen"
-        ],
-        "sampling": [
-            "-Proben durch Taucher/Tauchboote",
-            "-Aufbewahrung in Flaschen",
-            "-Analyse per Kamera oder Holografie"
-        ],
-        "sampling_problems": [
-            "Zerbrechlichkeit",
-            "Absetzen großer Partikel in Flaschen",
-            "Zerfall beim Transport         ",
-            "Messverzerrungen",
-            "Hohe natürliche Variabilität"
-        ],
-        "formation": [
-            "Biologisch produzierte Aggregate",
-            "Aggregation kleiner Partikel",
-            "Strömungsbedingte Kollisionen",
-            "Biologische Klebstoffe verbinden Partikel"
-        ],
-        "degradation": [
-            "Fraß durch Tiere",
-            "Mikrobielle Zersetzung",
-            "Absinken aus Oberflächenwasser",
-            "Seitliche Verdriftung durch Strömungen"
-        ] 
-    }
+    "definition": [
+        "-kleine Aggregate, welcher gößer als 500 mikrometer sind",
+        "-bestehen unter anderem aus Mikroorganismen und Tonmineralien",
+        "-ist eine allgemeine Kategorie, welche verschiedenste Aggregate umfasst",
+        "-struktur der Aggregate variiert ebenfalls von zerbrechlichen Partikeln bis zu robusten Strukturen",
+        "-Form ist dabei auch unterschiedlich und kann von kugeln bis zu Strängen oder Platten reichen"
+    ],
+
+    "importance": [
+        "-Wichtiges Transportmittel, da es eine große Menge an Material von der Meeresoberfläche in tiefere schichten bis hin zum Meeresboden befördert",
+        "-Nahrung für Tiere und und Wohnraum für kleinstlebewesen"
+    ],
+
+    "sampling": [
+        "-Sammlung von Wasserproben durch Taucher oder Tauchbote",
+        "-Aufbewahrung der Wasserproben in Behältnissen (bsp. Flaschen)", 
+        "-Auswertung durch hochauflösende Kameras, welche den Zustand des Materials und die Anzahl der Vorkommen dokumentieren oder holographische Geräte, welche größe, Form und Sinkgeschwindigkeit erfassen"
+    ],
+
+    "sampling_problems": [
+        "1) Zerbrechlichkeit der Aggregate: Meeresschnee bricht leicht bei jeder Form von Handhabung.",
+        "2) Probleme bei Wasserflaschen-Proben: Große Partikel setzen sich im ruhigen Innenraum der Flasche ab → werden beim Auswerten übersehen.",
+        "3) Probleme während Transport und Lagerung: Aggregate zerfallen oder verklumpen während Transport oder Stehenlassen; Proben verändern sich, bevor sie analysiert werden können.",
+        "4) Verzerrte Messungen der Partikelgrößen: Vor-Ort-Messungen enthalten mehr große Partikel; Laborproben zeigen weniger große, dafür mehr kleine Partikel → Ursache: Bruch durch Probenahme.",
+        "5) Hohe natürliche Variabilität: Häufigkeit von Meeresschnee schwankt stark über Zeit und Ort (auch über Gezeitenzyklen), was Vergleichbarkeit und zuverlässige Stichproben erschwert."
+    ],
+
+    "formation": [
+        "Zwei grundlegende Entstehungswege:",
+        "(A) Neu gebildete Aggregate (biologisch produziert): Entstehen direkt durch Schleim, Hüllen oder Kotmaterial von Meeresorganismen.",
+        "(B) Aggregation kleiner Partikel: Kleine Partikel (z. B. Mikroalgen, Tonminerale, Mikroaggregate, Kotpellets) stoßen zusammen und verkleben, wodurch größere Flocken entstehen.",
+        "Partikel werden zusammengebracht durch Strömungen: Strömungen führen dazu, dass Partikel miteinander kollidieren und daraufhin zu größeren Partikeln werden.",
+        "Differenziertes Absinken: Unterschiedliche Absinkgeschwindigkeiten führen dazu, dass Partikel kollidieren.",
+        "Nach dem Zusammenstoßen werden die Partikel verklebt durch biologische Klebstoffe (Bsp. Schleim)."
+    ],
+
+    "degradation": [
+        "Fraß durch Tiere: manche Fische fressen Meeresschnee oder knabbern Teile davon ab.",
+        "Mikrobielle Zersetzung: Bakterien bauen organisches Material ab → Aggregate werden chemisch ärmer und können teilweise zerfallen.",
+        "Absinken aus der Wassersäule (Sinking): Schnell sinkende Aggregate verschwinden besonders schnell aus Oberflächengewässern; manche Flocken sammeln sich an Sprungschichten oder bleiben durch Turbulenz länger oben – viele sinken dauerhaft ab und „verschwinden“ aus der Zone, in der sie beobachtet werden.",
+        "Seitliche Verdriftung (Lateral Advection): Strömungen können Meeresschnee seitlich wegtransportieren, etwa von Küsten- oder Hangregionen in tiefere oder entfernte Wasserschichten; dadurch nimmt die Menge an einem Ort ab, obwohl sie insgesamt nicht verschwindet."
+    ]   
+
+}
 
 # ============================================================
     # ANTHROPOMORPHIE RULES
@@ -314,7 +321,7 @@ if st.session_state.phase == "learning":
     GREETINGS = {
         0: "Hallo. Ich beantworte deine Fragen präzise und sachlich. Bitte stelle zuerst die 5 Hauptfragen zum Thema Meeresschnee.",
         1: "Hallo! Ich unterstütze dich gern bei deinen Fragen. Stelle mir jetzt die 5 Hauptfragen zum Thema Meeresschnee🙂",
-        2: "Hey! Ich bin Milly 😊🌊 Frag mich alles, was du wissen möchtest! Leg jetzt los mit deinen 5 Hauptfragen, welche du mir stellen solltest.😊"
+        2: "Hey! Ich bin Milly 😊🌊 Frag mich alles, was du wissen möchtest! Leg jetzt los mit deinen 5 Hauptfragen, welche du mir stellen solltest 😊."
     }
 
     assistant_avatar = AVATARS[level]
@@ -410,7 +417,7 @@ if st.session_state.phase == "learning":
     Wenn die Frage inhaltlich einer der fünf folgenden entspricht:
 
     1. Definition + Bedeutung von Meeresschnee  
-    2. Sammlung & Untersuchung von Meeresschnee  
+    2. Sammlung und Untersuchung von Meeresschnee  
     3. Probleme bei der Probenahme  
     4. Entstehung von Meeresschnee  
     5. Gründe für eine Abnahme der Menge
@@ -444,7 +451,7 @@ if st.session_state.phase == "learning":
     1. Definition + Bedeutung von Meeresschnee
     → verwende ausschließlich IEs["definition"] UND IEs["importance"]
 
-    2. Sammlung & Untersuchung von Meeresschnee
+    2. Sammlung und Untersuchung von Meeresschnee
     → verwende ausschließlich IEs["sampling"]
 
     3. Probleme bei der Probenahme
@@ -487,7 +494,7 @@ if st.session_state.phase == "learning":
     ============================================================
     Bevor du die Antwort abschickst, überprüfst du:
 
-    - Stimmen Intent & Regeln überein?
+    - Stimmen Intent und Regeln überein?
     - Ist der Stil exakt der des aktiven Modus?
     - Enthält die Antwort KEINE erfundenen Fakten?
 

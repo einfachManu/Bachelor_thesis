@@ -70,9 +70,9 @@ AVATARS = {
 }
 
 GREETINGS = {
-    0: "Hallo. Ich beantworte deine Fragen präzise und sachlich.",
-    1: "Hallo! Ich unterstütze dich gern bei deinen Fragen 🙂",
-    2: "Hey! Ich bin Milly 😊🌊 Frag mich alles, was du wissen möchtest!"
+    0: "Hallo. Ich beantworte deine Fragen präzise und sachlich. Bitte stelle zuerst die 5 Hauptfragen zum Thema Meeresschnee.",
+    1: "Hallo! Ich unterstütze dich gern bei deinen Fragen. Stelle mir jetzt die 5 Hauptfragen zum Thema Meeresschnee🙂",
+    2: "Hey! Ich bin Milly 😊🌊 Frag mich alles, was du wissen möchtest! Leg jetzt los mit deinen 5 Hauptfragen, welche du mir stellen solltest 😊."
 }
 
 assistant_avatar = AVATARS[level]
@@ -528,7 +528,7 @@ def contains_forbidden_pronouns(text, pronouns):
 def run_single_test():
     topic = random.choice(list(TEST_QUERIES.keys()))
     question = random.choice(TEST_QUERIES[topic])
-    level = 2 #random.choice([0, 1, 2])
+    level = random.choice([0, 1, 2])
 
     # Antwort über die echte Chatbot-Pipeline
     styled_answer, raw_answer = generate_answer(
@@ -549,8 +549,8 @@ def run_single_test():
     "styled_length": len(styled_answer),
     "emoji_count": count_emojis(styled_answer),
     "keyword_ok": coverage_ok,
-    "raw_preview": raw_answer[:300],
-    "styled_preview": styled_answer[:300],
+    "raw_preview": raw_answer[:300] + "...",
+    "styled_preview": styled_answer[:300] + "...",
     }
 
 
