@@ -2,6 +2,7 @@ streamlit>=1.20.0
 pandas
 chromadb
 openai
+pdfplumber
 openpyxl
 python-dotenv
 langchain-core
