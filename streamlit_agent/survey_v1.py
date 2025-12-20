@@ -116,7 +116,7 @@ def get_gsheet():
         scopes=scopes
     )
     client = gspread.authorize(creds)
-    return client.open("Survey_Results_Bachelor_Thesis")  # Name deines Sheets
+    return client.open_by_key("18eP378_ZOSO7R7KeRWlEPjedN7kXq2-CkNmFYHRRa3M") 
 
 
 def save_row(sheet_name, row_dict):
