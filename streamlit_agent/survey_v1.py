@@ -110,14 +110,17 @@ def save_jsonl(data, filename):
 
 @st.cache_resource
 def get_gsheet():
-    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
     creds = Credentials.from_service_account_info(
         st.secrets["gcp_service_account"],
         scopes=scopes
     )
     client = gspread.authorize(creds)
     return client.open_by_key(
-        "18eP378_ZOSO7R7KeRWlEPjedN7kXq2-CkNmFYHRRa3M"
+        "18eP378_ZOSO7R7KeRWlEPjedN7kXq2-CkNmFYRHRa3M"
     )
 
 def save_row(sheet_name, data):
