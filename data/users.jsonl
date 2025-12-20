@@ -19,3 +19,4 @@
 {"type": "user", "user_id": 18, "anthro": 1, "timestamp": "2025-12-12T17:29:30.975815"}
 {"type": "user", "user_id": 19, "anthro": 2, "timestamp": "2025-12-12T17:32:42.987242"}
 {"type": "user", "user_id": 20, "anthro": 2, "timestamp": "2025-12-12T17:37:29.326471"}
+{"type": "user_start", "user_id": 21, "timestamp": "2025-12-20T12:58:00.262916"}
