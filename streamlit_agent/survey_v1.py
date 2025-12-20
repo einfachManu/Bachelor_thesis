@@ -116,11 +116,14 @@ def get_gsheet():
         scopes=scopes
     )
     client = gspread.authorize(creds)
-    return client.open("Survey_Results_Bachelor_Thesis") 
+    return client.open_by_key(
+        "18eP378_ZOSO7R7KeRWlEPjedN7kXq2-CkNmFYHRRa3M"
+    )
 
 def save_row(sheet_name, data):
     sheet = get_gsheet()
-
+    st.write("Tabs gefunden:", [ws.title for ws in sheet.worksheets()])
+    st.stop()
     try:
         ws = sheet.worksheet(sheet_name)
     except gspread.exceptions.WorksheetNotFound:
