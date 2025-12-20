@@ -12,7 +12,8 @@ import uuid
 import random
 from docx import Document
 import html
-
+import gspread
+from google.oauth2.service_account import Credentials
 
 def docx_to_html(path):
     doc = Document(path)
@@ -82,12 +83,45 @@ DOCX_PATH = "streamlit_agent/kurzfassung_ablauf_umfrage.docx"
 ############################################################
 
 def save_jsonl(data, filename):
-    """Sichert ein Dict als eine Zeile JSON in einer JSONL-Datei."""
-    os.makedirs("data", exist_ok=True)
-    path = os.path.join("data", filename)
-    with open(path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(data, ensure_ascii=False) + "\n")
+    """
+    Cloud-kompatibler Ersatz für JSONL:
+    leitet automatisch in Google Sheets um
+    """
 
+    mapping = {
+        "users.jsonl": "users",
+        "chatlogs.jsonl": "chatlogs",
+        "responses.jsonl": "responses",
+        "qualitative_responses.jsonl": "qualitative_responses",
+        "retention_responses.jsonl": "retention_responses"
+    }
+
+    sheet_name = mapping.get(filename)
+
+    if sheet_name is None:
+        return  # unbekannte Datei → ignorieren
+
+    save_row(sheet_name, data)
+
+
+############################################################
+# GOOGLE SHEETS BACKEND (STREAMLIT CLOUD)
+############################################################
+
+@st.cache_resource
+def get_gsheet():
+    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=scopes
+    )
+    client = gspread.authorize(creds)
+    return client.open("Survey_Results_Bachelor_Thesis")  # Name deines Sheets
+
+
+def save_row(sheet_name, row_dict):
+    sheet = get_gsheet().worksheet(sheet_name)
+    sheet.append_row(list(row_dict.values()))
 
 ############################################################
 # USER-ID HANDLING
