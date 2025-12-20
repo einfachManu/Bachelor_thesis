@@ -12,3 +12,4 @@ sqlalchemy
 tiktoken
 altair<5
 python-docx
+gspread
