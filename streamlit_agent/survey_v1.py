@@ -125,21 +125,24 @@ def get_gsheet():
 
 def save_row(sheet_name, data):
     sheet = get_gsheet()
-    st.write("Tabs gefunden:", [ws.title for ws in sheet.worksheets()])
-    st.stop()
-    try:
-        ws = sheet.worksheet(sheet_name)
-    except gspread.exceptions.WorksheetNotFound:
-        # Tab existiert nicht → neu anlegen
-        ws = sheet.add_worksheet(
-            title=sheet_name,
-            rows=1000,
-            cols=20
-        )
-        # Header schreiben
-        ws.append_row(list(data.keys()))
+    ws = sheet.worksheet(sheet_name)
 
-    ws.append_row(list(data.values()))
+    # Header lesen (erste Zeile)
+    header = ws.row_values(1)
+
+    # Falls Header leer → initial setzen
+    if not header:
+        header = list(data.keys())
+        ws.append_row(header)
+
+    # Row exakt zur Header-Struktur bauen
+    row = []
+    for col in header:
+        row.append(str(data.get(col, "")))
+
+    # Schreiben
+    ws.append_row(row, value_input_option="USER_ENTERED")
+
 
 ############################################################
 # USER-ID HANDLING
