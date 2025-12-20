@@ -118,9 +118,10 @@ def get_gsheet():
     client = gspread.authorize(creds)
     return client.open_by_key("18eP378_ZOSO7R7KeRWlEPjedN7kXq2-CkNmFYHRRa3M") 
 
-
 def save_row(sheet_name, row_dict):
     sheet = get_gsheet().worksheet(sheet_name)
+    st.write("Gefundene Tabs:", [ws.title for ws in sheet.worksheets()])
+    st.stop()
     sheet.append_row(list(row_dict.values()))
 
 ############################################################
