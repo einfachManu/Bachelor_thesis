@@ -116,13 +116,24 @@ def get_gsheet():
         scopes=scopes
     )
     client = gspread.authorize(creds)
-    return client.open_by_key("18eP378_ZOSO7R7KeRWlEPjedN7kXq2-CkNmFYHRRa3M") 
+    return client.open("Survey_Results_Bachelor_Thesis") 
 
-def save_row(sheet_name, row_dict):
-    sheet = get_gsheet().worksheet(sheet_name)
-    st.write("Gefundene Tabs:", [ws.title for ws in sheet.worksheets()])
-    st.stop()
-    sheet.append_row(list(row_dict.values()))
+def save_row(sheet_name, data):
+    sheet = get_gsheet()
+
+    try:
+        ws = sheet.worksheet(sheet_name)
+    except gspread.exceptions.WorksheetNotFound:
+        # Tab existiert nicht → neu anlegen
+        ws = sheet.add_worksheet(
+            title=sheet_name,
+            rows=1000,
+            cols=20
+        )
+        # Header schreiben
+        ws.append_row(list(data.keys()))
+
+    ws.append_row(list(data.values()))
 
 ############################################################
 # USER-ID HANDLING
