@@ -427,8 +427,10 @@ if st.session_state.phase == "learning":
     "\n" \
     "- Wichtigkeit von Meeresschnee für das Ökosystem  ")
 
-    level = random.choice([0, 1, 2])
-    st.session_state.anthro = level
+    if "anthro" not in st.session_state:
+        st.session_state.anthro = random.choice([0, 1, 2])
+    level = st.session_state.anthro
+
     AVATARS = {
         0: "🟧",
         1: "🧑🏻",
