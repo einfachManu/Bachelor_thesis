@@ -424,9 +424,8 @@ if st.session_state.phase == "learning":
     "- Definition und Bedeutung von Meeresschnee  " \
     "\n" \
     "- Entstehung von Meeresschnee  " \
-    "\n" \
-    "- Wichtigkeit von Meeresschnee für das Ökosystem  ")
-
+    )
+    
     if "anthro" not in st.session_state:
         st.session_state.anthro = random.choice([0, 1, 2])
     level = st.session_state.anthro
