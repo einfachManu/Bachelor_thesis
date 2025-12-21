@@ -133,7 +133,7 @@ if st.session_state.phase == "retention":
     st.write(q["text"])
 
     if q["type"] == "likert":
-        answer = st.slider("", 1, 10)
+        answer = st.slider("", 1, 7)
 
     elif q["type"] == "single":
         answer = st.radio("", q["options"])

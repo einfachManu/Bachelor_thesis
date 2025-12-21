@@ -784,7 +784,7 @@ if st.session_state.phase == "survey":
     st.subheader(f"Frage {q['nr']}: {q['text']}")
 
     if q["type"] == "likert":
-        ans = st.slider("", 1, 10)
+        ans = st.slider("", 1, 7)
 
     elif q["type"] == "single":
         ans = st.radio("", q["options"])
