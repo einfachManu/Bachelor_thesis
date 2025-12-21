@@ -1,14 +1,41 @@
 ############################################################
-# RETENTION TASK – MARINE SNOW STUDY
+# RETENTION TASK – MARINE SNOW STUDY (GOOGLE SHEETS)
 ############################################################
 
 import streamlit as st
-import json
-import os
 from datetime import datetime
+import gspread
+from google.oauth2.service_account import Credentials
 
 ############################################################
-# RETENTION QUESTIONS (Tag 2)
+# GOOGLE SHEETS BACKEND
+############################################################
+
+@st.cache_resource
+def get_gsheet():
+    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=scopes
+    )
+    client = gspread.authorize(creds)
+    return client.open_by_key(
+        "18eP378_ZOSO7R7KeRWlEPjedN7kXq2-CkNmFYHRRa3M"
+    )
+
+def save_row(sheet_name, data):
+    sheet = get_gsheet()
+
+    try:
+        ws = sheet.worksheet(sheet_name)
+    except gspread.exceptions.WorksheetNotFound:
+        ws = sheet.add_worksheet(title=sheet_name, rows=1000, cols=20)
+        ws.append_row(list(data.keys()))
+
+    ws.append_row(list(data.values()))
+
+############################################################
+# RETENTION QUESTIONS (TAG 2)
 ############################################################
 
 retention_questions = [
@@ -55,16 +82,6 @@ retention_questions = [
         "text": "Welche Eigenschaft oder Funktion von Meeresschnee ist dir besonders im Gedächtnis geblieben?"
     }
 ]
-
-############################################################
-# JSONL SAVE FUNCTION
-############################################################
-
-def save_jsonl(data, filename):
-    os.makedirs("data", exist_ok=True)
-    path = os.path.join("data", filename)
-    with open(path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(data, ensure_ascii=False) + "\n")
 
 ############################################################
 # SESSION STATE INIT
@@ -129,14 +146,14 @@ if st.session_state.phase == "retention":
         answer = st.text_area("", height=150)
 
     if st.button("Weiter"):
-        save_jsonl({
+        save_row("retention_responses", {
             "type": "retention_response",
             "user_id": st.session_state.user_id,
             "question_nr": q["nr"],
             "question_text": q["text"],
-            "answer": answer,
+            "answer": str(answer),
             "timestamp": datetime.now().isoformat()
-        }, "retention_responses.jsonl")
+        })
 
         st.session_state.retention_index += 1
 
@@ -150,6 +167,4 @@ if st.session_state.phase == "retention":
 ############################################################
 
 if st.session_state.phase == "end":
-    st.success(
-        "🎉 Vielen Dank für deine Teilnahme am zweiten Teil der Umfrage!"
-    )
+    st.success("🎉 Vielen Dank für deine Teilnahme am zweiten Teil der Umfrage!")
