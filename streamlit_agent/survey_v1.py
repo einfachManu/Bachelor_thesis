@@ -148,23 +148,28 @@ def save_row(sheet_name, data):
 # USER-ID HANDLING
 ############################################################
 
-def get_next_user_id():
-    """Erzeugt eine fortlaufende User-ID und speichert sie."""
-    os.makedirs("data", exist_ok=True)
-    path = "data/user_id_counter.txt"
+def get_next_user_id_from_sheet():
+    sheet = get_gsheet()
 
-    if not os.path.exists(path):
-        with open(path, "w") as f:
-            print("Pfad existiert nicht, erstelle neue Datei.")
-            f.write("1")
-        return 1
+    try:
+        ws = sheet.worksheet("meta")
+    except gspread.exceptions.WorksheetNotFound:
+        # Falls Meta-Tab fehlt → anlegen
+        ws = sheet.add_worksheet(title="meta", rows=10, cols=2)
+        ws.append_row(["key", "value"])
+        ws.append_row(["user_id_counter", "1"])
 
-    with open(path, "r+") as f:
-        value = int(f.read())
-        f.seek(0)
-        f.write(str(value + 1))
-        return value
+    records = ws.get_all_records()
 
+    for i, row in enumerate(records, start=2):  # start=2 wegen Header
+        if row["key"] == "user_id_counter":
+            current_id = int(row["value"])
+            ws.update_cell(i, 2, current_id + 1)
+            return current_id
+
+    # Fallback (sollte nicht passieren)
+    ws.append_row(["user_id_counter", "1"])
+    return 1
 
     # ============================================================
     # INFORMATION UNITS — SET B
@@ -372,7 +377,7 @@ if st.session_state.phase == "start":
 
         #USER-ID EINMALIG VERGEBEN
         if st.session_state.user_id is None:
-            st.session_state.user_id = get_next_user_id()
+            st.session_state.user_id = get_next_user_id_from_sheet()
 
             save_jsonl({
                 "type": "user_start",
