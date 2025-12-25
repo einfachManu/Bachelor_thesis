@@ -892,7 +892,7 @@ if st.session_state.phase == "end":
                 "phone_e164": phone,
                 "opt_in": True,
                 "t1_completed_at": now.isoformat(),
-                "followup_due_at": datetime.fromtimestamp(followup_due).isoformat(),
+                "followup_due_at": followup_due.isoformat(),
                 "followup_link": f"https://bachelorthesis-manuel-schwarz-retention-task.streamlit.app/?pid={st.session_state.user_id}",
                 "sent_at": "",
                 "status": "PENDING",
