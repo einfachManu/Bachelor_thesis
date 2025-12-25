@@ -884,7 +884,7 @@ if st.session_state.phase == "end":
                 st.error("Bitte eine gültige Telefonnummer im internationalen Format angeben.")
                 st.stop()
 
-            now = datetime.now()
+            now = datetime.now() + 1
             followup_due = now.timestamp() + 30 # +30 Sekunden für Testzwecke (sonst 60*60*8  = 8 Stunden)
 
             save_row("followups", {
