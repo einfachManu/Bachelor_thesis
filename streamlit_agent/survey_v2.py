@@ -893,7 +893,7 @@ if st.session_state.phase == "end":
                 "opt_in": True,
                 "t1_completed_at": now.isoformat(),
                 "followup_due_at": datetime.fromtimestamp(followup_due).isoformat(),
-                "followup_link": f"https://DEIN_LINK_ZUR_UMFRAGE_2?pid={st.session_state.user_id}",
+                "followup_link": f"https://bachelorthesis-manuel-schwarz-retention-task.streamlit.app/?pid={st.session_state.user_id}",
                 "sent_at": "",
                 "status": "PENDING",
                 "error": ""
