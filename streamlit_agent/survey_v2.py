@@ -873,6 +873,10 @@ if st.session_state.phase == "end":
         "Telefonnummer (Bitte gib diese in folgendem Format an: +491701234567)",
         placeholder="+491701234567"
     )
+    phone_clean = phone.strip()
+
+    if not phone_clean.startswith("+"):
+        phone_clean = "+" + phone_clean
 
     opt_in = st.checkbox(
         "Ich willige ein, nach 7 Tagen per SMS einen Link zur zweiten Umfrage zu erhalten."
@@ -889,7 +893,7 @@ if st.session_state.phase == "end":
 
             save_row("followups", {
                 "participant_id": st.session_state.user_id,
-                "phone_e164": phone,
+                "phone_e164": phone_clean,
                 "opt_in": True,
                 "t1_completed_at": now.isoformat(),
                 "followup_due_at": followup_due.isoformat(),
