@@ -885,7 +885,7 @@ if st.session_state.phase == "end":
                 st.stop()
 
             now = datetime.now()
-            followup_due = now.timestamp() + 7 * 24 * 60 * 60  # +7 Tage
+            followup_due = now.timestamp() + 30 # +30 Sekunden für Testzwecke (sonst 60*60*8  = 8 Stunden)
 
             save_row("followups", {
                 "participant_id": st.session_state.user_id,
