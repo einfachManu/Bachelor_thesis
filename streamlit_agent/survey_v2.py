@@ -320,15 +320,17 @@ tag1_questions = [
 qualitative_questions = [
     {
         "nr": 0,
-        "text": "Wie hast du den Sprachstil der Assistentin wahrgenommen?"
+        "type": "likert",
+        "text": "Wie mental anstrengend fandest du die Interaktion mit dem Chatbot? (1 = gar nicht anstrengend, 7 = sehr anstrengend)"
     },
     {
         "nr": 1,
-        "text": "Welche Aspekte der Interaktion haben dir beim Verständnis geholfen?"
+        "type": "likert",
+        "text": "Wie hilfreich war der Chatbot deiner Meinung nach beim Lernen über Meeresschnee? (1 = gar nicht hilfreich, 7 = sehr hilfreich)"
     },
     {
         "nr": 2,
-        "text": "Gab es Aspekte der Interaktion oder Darstellung, die dein Verständnis eher beeinträchtigt haben?"
+        "text": "Welche Aspekte der Interaktion sind dir positiv, bzw. negativ aufgefallen?"
     },
 ]
 
@@ -879,7 +881,7 @@ if st.session_state.phase == "end":
         phone_clean = "+" + phone_clean
 
     opt_in = st.checkbox(
-        "Ich willige ein, nach 7 Tagen per SMS einen Link zur zweiten Umfrage zu erhalten."
+        "Ich willige ein, nach ca 8 Stunden per SMS einen Link zur zweiten Umfrage zu erhalten."
     )
 
     if st.button("Umfrage abschließen"):
