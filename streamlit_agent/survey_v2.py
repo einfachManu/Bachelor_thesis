@@ -822,7 +822,9 @@ if st.session_state.phase == "survey":
 ############################################################
 
 if st.session_state.phase == "qualitative":
-    
+    idx = st.session_state.qual_index
+    q = qualitative_questions[idx]
+
     answer = None
     q = qualitative_questions[st.session_state.qual_index]
 
@@ -830,17 +832,25 @@ if st.session_state.phase == "qualitative":
     st.write(q["text"])
 
     if q["type"] == "likert":
-        ans = st.slider("", 1, 7)
+        answer = st.slider(
+            "Bitte wähle eine Zahl (1 = sehr gering, 7 = sehr hoch)",
+            1, 7,
+            key=f"qual_{idx}"
+        )
 
     elif q["type"] == "paragraph":
         answer = st.text_area(
             "Deine Antwort:",
             height=180,
-            placeholder="Bitte frei und ausführlich antworten …"
+            placeholder="Bitte frei antworten …",
+            key=f"qual_{idx}"
         )
 
-
     if st.button("Weiter"):
+        ##if answer in (None, ""):
+            ##st.warning("Bitte beantworte die Frage, bevor du fortfährst.")
+            ##st.stop()
+
         save_jsonl({
             "type": "qualitative_response",
             "user_id": st.session_state.user_id,
@@ -857,6 +867,7 @@ if st.session_state.phase == "qualitative":
             st.session_state.phase = "end"
 
         st.rerun()
+
 
 
 ############################################################
