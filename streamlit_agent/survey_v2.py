@@ -262,7 +262,7 @@ tag1_questions = [
     {
         "nr": 0,
         "type": "likert",
-        "text": "Wie sicher fühlst du dich, den Stoff verstanden zu haben und die folgenden Fragen beantworten zu können?"
+        "text": "Wie sicher fühlst du dich, den Stoff verstanden zu haben und die folgenden Fragen beantworten zu können?(1 = gar nicht sicher, 7 = sehr sicher)"
     },
 
     # Frage 1 – Single Choice (Definition / Grundverständnis)
@@ -828,11 +828,16 @@ if st.session_state.phase == "qualitative":
     st.subheader(f"Offene Frage {q['nr'] + 1}")
     st.write(q["text"])
 
-    answer = st.text_area(
-        "Deine Antwort:",
-        height=180,
-        placeholder="Bitte frei und ausführlich antworten …"
-    )
+    if q["type"] == "likert":
+        ans = st.slider("", 1, 7)
+
+    elif q["type"] == "paragraph":
+        answer = st.text_area(
+            "Deine Antwort:",
+            height=180,
+            placeholder="Bitte frei und ausführlich antworten …"
+        )
+
 
     if st.button("Weiter"):
         save_jsonl({
