@@ -330,6 +330,7 @@ qualitative_questions = [
     },
     {
         "nr": 2,
+        "type": "paragraph",
         "text": "Welche Aspekte der Interaktion sind dir positiv, bzw. negativ aufgefallen?"
     },
 ]
