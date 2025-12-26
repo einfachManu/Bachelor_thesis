@@ -822,7 +822,8 @@ if st.session_state.phase == "survey":
 ############################################################
 
 if st.session_state.phase == "qualitative":
-
+    
+    answer = None
     q = qualitative_questions[st.session_state.qual_index]
 
     st.subheader(f"Offene Frage {q['nr'] + 1}")
