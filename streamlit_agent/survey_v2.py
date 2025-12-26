@@ -807,7 +807,7 @@ if st.session_state.phase == "survey":
             "user_id": st.session_state.user_id,
             "question_nr": q["nr"],
             "question_text": q["text"],
-            "answer": ans,
+            "answer": str(ans),
             "timestamp": datetime.now().isoformat()
         }, "responses.jsonl")
 
@@ -858,7 +858,7 @@ if st.session_state.phase == "qualitative":
             "anthro": st.session_state.anthro,
             "question_nr": q["nr"],
             "question_text": q["text"],
-            "answer": answer,
+            "answer": str(answer),
             "timestamp": datetime.now().isoformat()
         }, "qualitative_responses.jsonl")
 
