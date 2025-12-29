@@ -44,7 +44,7 @@ retention_questions = [
     {
         "nr": 0,
         "type": "likert",
-        "text": "Wie gut erinnerst du dich aktuell noch an die Inhalte zum Thema Meeresschnee?"
+        "text": "Wie gut erinnerst du dich aktuell noch an die Inhalte zum Thema Meeresschnee?(1 = gar nicht, 7 = sehr gut)"
     },
     {
         "nr": 1,

@@ -444,6 +444,11 @@ if st.session_state.phase == "learning":
         1: "Hallo! Ich unterstütze dich gern bei deinen Fragen.🙂",
         2: "Hey! Ich bin Milly 😊🌊 Frag mich alles, was du wissen möchtest!😊"
     }
+    SPINNER_TEXT = {
+        0: "Antwort wird generiert …",
+        1: "Antwort wird vorbereitet …",
+        2: "Milly is typing …"
+    }
 
     assistant_avatar = AVATARS[level]
 
@@ -663,8 +668,10 @@ if st.session_state.phase == "learning":
     # ============================================================
 
     def generate_answer(user_text, level, return_raw=False):
+        
+        spinner_text = SPINNER_TEXT.get(level, "Antwort wird generiert …")
 
-        with st.spinner("Antwort wird generiert …"):
+        with st.spinner(spinner_text):
             corrected = autocorrect(user_text)
 
             # RAG
