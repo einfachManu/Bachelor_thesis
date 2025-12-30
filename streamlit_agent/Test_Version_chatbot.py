@@ -650,8 +650,12 @@ if st.session_state.phase == "learning":
             socio_affect = parsed["socio_affect"]
             affect_text = ""
 
-            if intent == "AFFECT":
-                return generate_affect_response(user_text, level)
+            socio_affect = parsed["socio_affect"]
+            affect_text = ""
+
+            if socio_affect != "NONE":
+                affect_text = generate_affect_response(user_text, level) + "\n\n"
+                
             raw_text = affect_text + raw_text
             
 
