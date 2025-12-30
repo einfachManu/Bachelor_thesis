@@ -663,6 +663,3 @@ if st.session_state.phase == "learning":
             "anthro": st.session_state.anthro,
             "timestamp": datetime.now().isoformat()
             }, "chatlogs.jsonl")
-    if st.button("Lernphase vorzeitig beenden"):
-        st.session_state.phase = "learning_done"
-        st.rerun()
