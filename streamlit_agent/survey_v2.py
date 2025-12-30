@@ -522,12 +522,8 @@ if st.session_state.phase == "learning":
     Wenn die Frage inhaltlich einer der fünf folgenden entspricht:
 
     1. Definition + Bedeutung von Meeresschnee  
-    2. Sammlung und Untersuchung von Meeresschnee  
-    3. Probleme bei der Probenahme  
-    4. Entstehung von Meeresschnee  
-    5. Gründe für eine Abnahme der Menge
-
-
+    2. Entstehung von Meeresschnee  
+    
     INTENT = SPECIFIC  
     → Detailfragen, die NICHT exakt diese Hauptthemen sind  
     → Antwort NUR basierend auf RAG
