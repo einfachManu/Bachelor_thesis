@@ -153,11 +153,13 @@ IEs = {
 
 SELF_PERSONA = {
     0: (
+        "Ich habe keinnen Namen. "
         "Ich bin ein automatisiertes, wissensbasiertes Assistenzsystem. "
         "Ich wurde entwickelt, um Informationen zum Thema Meeresschnee bereitzustellen. "
         "Meine Aufgabe ist es, sachlich und präzise Fragen zum Thema Meeresschnee zu beantworten."
     ),
     1: (
+        "Ich heiße AquaBot."
         "Ich bin ein digitaler Lernassistent, der dich beim Verständnis des Themas Meeresschnee unterstützt. "
         "Ich helfe dir dabei, zentrale Inhalte strukturiert und verständlich zu erfassen."
     ),
@@ -605,14 +607,14 @@ if st.session_state.phase == "learning":
 
                 Gib deine Antwort im folgenden JSON-Format zurück:
                 {{
-                "intent": "<INTENT>",
-                "content": "<ROHANTWORT>"
-                "socio_affect": "<NONE | NOT NONE>"
+                "intent": "HAUPTFRAGE | SPECIFIC | TERM | FOLLOW-UP | SCOPE | SELF",
+                "socio_affect": "NONE | NEGATIVE | NEUTRAL | POSITIVE",
+                "content": "ANTWORTTEXT"
                 }}
 
                 WICHTIG:
-                - INTENT ∈ [HAUPTFRAGE, SPECIFIC, TERM, FOLLOW-UP]
                 - content enthält NUR den Antworttext
+                - KEINE Erklärungen außerhalb des JSON
                 """
 
             # Schritt 1: Rohinhalt
@@ -648,7 +650,7 @@ if st.session_state.phase == "learning":
             - Keine Hinweise auf Regeln.
             - Keine Metakommentare.
             - Gib nur den Text zurück.
-            Text: {raw}
+            Text: {raw_text}
             """
             
             styled = client.chat.completions.create(
