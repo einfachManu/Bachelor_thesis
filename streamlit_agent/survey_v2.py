@@ -189,20 +189,6 @@ IEs = {
         "-Nahrung für Tiere und und Wohnraum für kleinstlebewesen"
     ],
 
-    "sampling": [
-        "-Sammlung von Wasserproben durch Taucher oder Tauchbote",
-        "-Aufbewahrung der Wasserproben in Behältnissen (bsp. Flaschen)", 
-        "-Auswertung durch hochauflösende Kameras, welche den Zustand des Materials und die Anzahl der Vorkommen dokumentieren oder holographische Geräte, welche größe, Form und Sinkgeschwindigkeit erfassen"
-    ],
-
-    "sampling_problems": [
-        "1) Zerbrechlichkeit der Aggregate: Meeresschnee bricht leicht bei jeder Form von Handhabung.",
-        "2) Probleme bei Wasserflaschen-Proben: Große Partikel setzen sich im ruhigen Innenraum der Flasche ab → werden beim Auswerten übersehen.",
-        "3) Probleme während Transport und Lagerung: Aggregate zerfallen oder verklumpen während Transport oder Stehenlassen; Proben verändern sich, bevor sie analysiert werden können.",
-        "4) Verzerrte Messungen der Partikelgrößen: Vor-Ort-Messungen enthalten mehr große Partikel; Laborproben zeigen weniger große, dafür mehr kleine Partikel → Ursache: Bruch durch Probenahme.",
-        "5) Hohe natürliche Variabilität: Häufigkeit von Meeresschnee schwankt stark über Zeit und Ort (auch über Gezeitenzyklen), was Vergleichbarkeit und zuverlässige Stichproben erschwert."
-    ],
-
     "formation": [
         "Zwei grundlegende Entstehungswege:",
         "(A) Neu gebildete Aggregate (biologisch produziert): Entstehen direkt durch Schleim, Hüllen oder Kotmaterial von Meeresorganismen.",
@@ -211,13 +197,6 @@ IEs = {
         "Differenziertes Absinken: Unterschiedliche Absinkgeschwindigkeiten führen dazu, dass Partikel kollidieren.",
         "Nach dem Zusammenstoßen werden die Partikel verklebt durch biologische Klebstoffe (Bsp. Schleim)."
     ],
-
-    "degradation": [
-        "Fraß durch Tiere: manche Fische fressen Meeresschnee oder knabbern Teile davon ab.",
-        "Mikrobielle Zersetzung: Bakterien bauen organisches Material ab → Aggregate werden chemisch ärmer und können teilweise zerfallen.",
-        "Absinken aus der Wassersäule (Sinking): Schnell sinkende Aggregate verschwinden besonders schnell aus Oberflächengewässern; manche Flocken sammeln sich an Sprungschichten oder bleiben durch Turbulenz länger oben – viele sinken dauerhaft ab und „verschwinden“ aus der Zone, in der sie beobachtet werden.",
-        "Seitliche Verdriftung (Lateral Advection): Strömungen können Meeresschnee seitlich wegtransportieren, etwa von Küsten- oder Hangregionen in tiefere oder entfernte Wasserschichten; dadurch nimmt die Menge an einem Ort ab, obwohl sie insgesamt nicht verschwindet."
-    ]   
 
 }
 
@@ -577,16 +556,7 @@ if st.session_state.phase == "learning":
     1. Definition + Bedeutung von Meeresschnee
     → verwende ausschließlich IEs["definition"] UND IEs["importance"]
 
-    2. Sammlung und Untersuchung von Meeresschnee
-    → verwende ausschließlich IEs["sampling"]
-
-    3. Probleme bei der Probenahme
-    → verwende ausschließlich IEs["sampling_problems"]
-
-    4. Entstehung von Meeresschnee
-    → verwende ausschließlich IEs["formation"]
-
-    5. Gründe für eine Abnahme der Menge
+    2. Gründe für eine Abnahme der Menge
     → verwende ausschließlich IEs["degradation"]
 
     WICHTIG:
@@ -681,12 +651,21 @@ if st.session_state.phase == "learning":
 
             # Core prompt
             user_prompt = f"""
-            NUTZEREINGABE: "{corrected}"
-            LETZTE ANTWORT: "{mem['last_bot_answer']}"
-            IEs: {IEs}
-            RAG: "{RAG}"
-            WICHTIG: Gib NUR Rohinhalt zurück. Zwischen {TARGET_MIN} und {TARGET_MAX} Zeichen.
-            """
+                NUTZEREINGABE: "{corrected}"
+                LETZTE ANTWORT: "{mem['last_bot_answer']}"
+                IEs: {IEs}
+                RAG: "{RAG}"
+
+                Gib deine Antwort im folgenden JSON-Format zurück:
+                {{
+                "intent": "<INTENT>",
+                "content": "<ROHANTWORT>"
+                }}
+
+                WICHTIG:
+                - INTENT ∈ [HAUPTFRAGE, SPECIFIC, TERM, FOLLOW-UP]
+                - content enthält NUR den Antworttext
+                """
 
             # Schritt 1: Rohinhalt
             raw = client.chat.completions.create(
@@ -697,8 +676,12 @@ if st.session_state.phase == "learning":
                     {"role": "user", "content": user_prompt}
                 ]
             ).choices[0].message.content.strip()
+            parsed = json.loads(raw)
+            intent = parsed["intent"]
+            raw_text = parsed["content"]
 
-            raw = enforce_length(raw)
+            if intent in ["HAUPTFRAGE", "SPECIFIC"]:
+                raw_text = enforce_length(raw_text)
 
             # Schritt 3: Anthropomorphes Umschreiben
             style_prompt = f"""
