@@ -648,14 +648,12 @@ if st.session_state.phase == "learning":
             intent = parsed["intent"]
             raw_text = parsed["content"]
             socio_affect = parsed["socio_affect"]
+            
             affect_text = ""
 
-            socio_affect = parsed["socio_affect"]
-            affect_text = ""
-
-            if socio_affect != "NONE":
+            if socio_affect != "NONE" and intent not in ["SELF", "SCOPE"]:
                 affect_text = generate_affect_response(user_text, level) + "\n\n"
-                
+
             raw_text = affect_text + raw_text
             
 
@@ -697,6 +695,7 @@ if st.session_state.phase == "learning":
             ]
         )
         return response.choices[0].message.content.strip()
+
 
 # ============================================================
 # CHAT LOOP
