@@ -172,8 +172,26 @@ SELF_PERSONA = {
     )
 }
 # ============================================================
-    # ANTHROPOMORPHIE RULES
-    # ============================================================
+# AFFECT SYSTEM
+# ============================================================
+AFFECT_SYSTEM = {
+    0: """
+Du reagierst neutral auf die Äußerung.
+Keine Emotionen, keine Empathie.
+Maximal 1–2 Sätze.
+""",
+    1: """
+Du reagierst höflich und leicht unterstützend.
+Keine Rückfragen, keine Dialogangebote.
+Maximal 2 Sätze.
+""",
+    2: """
+Du reagierst empathisch und freundlich.
+Keine Konversationsöffnung, keine Aufforderungen zum Teilen.
+Maximal 2–3 Sätze.
+"""
+}
+
 
 ANTHRO = {
         0: """
@@ -531,7 +549,7 @@ if st.session_state.phase == "learning":
     - KEINE Information Units
     - KEIN RAG
     - KEINE fachlichen Inhalte zu Meeresschnee
-    - Antwort basiert ausschließlich auf der definierten Persona (SELF_PERSONA)
+    - Antwort basiert AUSSCHLIEßLICH auf der definierten Persona (SELF_PERSONA)
     - Stil MUSS der aktuellen Anthropomorphiestufe entsprechen
 
     ============================================================
@@ -632,9 +650,8 @@ if st.session_state.phase == "learning":
             socio_affect = parsed["socio_affect"]
             affect_text = ""
 
-            if socio_affect != "NONE":
-                affect_text = generate_affect_response(user_text, level) + "\n\n"
-
+            if intent == "AFFECT":
+                return generate_affect_response(user_text, level)
             raw_text = affect_text + raw_text
             
 
@@ -667,31 +684,14 @@ if st.session_state.phase == "learning":
             return styled
         
     def generate_affect_response(user_text, level):
-        AFFECT_SYSTEM = {
-            0: "Antworte sachlich, ohne Empathie, ohne Emotionen.",
-            1: "Antworte höflich und unterstützend, aber zurückhaltend.",
-            2: "Antworte empathisch, freundlich und menschlich, mit leichten Emojis."
-        }
-
-        affect_prompt = f"""
-        Der Nutzer äußert Gefühle.
-        Antworte kurz (1–2 Sätze).
-        Keine Ratschläge, keine Therapie, keine Nachfragen.
-        Keine Fachinhalte.
-
-        Nutzereingabe:
-        "{user_text}"
-        """
-
         response = client.chat.completions.create(
-            model="gpt-4o-mini",   # bewusst kleines Modell
-            temperature=0.6,
+            model="gpt-4o-mini",
+            temperature=0.5,
             messages=[
                 {"role": "system", "content": AFFECT_SYSTEM[level]},
-                {"role": "user", "content": affect_prompt}
+                {"role": "user", "content": user_text}
             ]
         )
-
         return response.choices[0].message.content.strip()
 
 # ============================================================
