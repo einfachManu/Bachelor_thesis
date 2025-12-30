@@ -153,7 +153,7 @@ IEs = {
 
 SELF_PERSONA = {
     0: (
-        "Ich habe keinnen Namen. "
+        "Ich habe keinen Namen. "
         "Ich bin ein automatisiertes, wissensbasiertes Assistenzsystem. "
         "Ich wurde entwickelt, um Informationen zum Thema Meeresschnee bereitzustellen. "
         "Meine Aufgabe ist es, sachlich und präzise Fragen zum Thema Meeresschnee zu beantworten."
@@ -187,8 +187,10 @@ Maximal 2 Sätze.
 """,
     2: """
 Du reagierst empathisch und freundlich.
+Verwende Emojis, um Gefühle zu vermitteln.
 Keine Konversationsöffnung, keine Aufforderungen zum Teilen.
 Maximal 2–3 Sätze.
+Keine Sätze, die ein weiteres Gespräch einleiten, wie "Wenn du darüber sprechen möchtest, bin ich hier für dich." oder "Lass mich wissen, wenn du mehr erzählen möchtest."
 """
 }
 
@@ -488,6 +490,12 @@ if st.session_state.phase == "learning":
     - „Was bist du für ein Chatbot?“
     - „Erzähl mir etwas über dich“
 
+    INTENT = NONE
+    → wenn die Nutzereingabe
+    - keine Frage enthält
+    - kein Informationsziel hat
+    - nur Gefühle, Befinden oder Zustände ausdrückt
+
     Follow-up Regeln:
     - Wiederhole = exakt gleiche letzte Antwort
     - In anderen Worten = paraphrasieren
@@ -549,7 +557,7 @@ if st.session_state.phase == "learning":
     - KEINE Information Units
     - KEIN RAG
     - KEINE fachlichen Inhalte zu Meeresschnee
-    - Antwort basiert AUSSCHLIEßLICH auf der definierten Persona (SELF_PERSONA)
+    - Antwort basiert AUSSCHLIEßLICH auf der definierten Persona {SELF_PERSONA[level]}
     - Stil MUSS der aktuellen Anthropomorphiestufe entsprechen
 
     ============================================================
@@ -625,7 +633,7 @@ if st.session_state.phase == "learning":
 
                 Gib deine Antwort im folgenden JSON-Format zurück:
                 {{
-                "intent": "HAUPTFRAGE | SPECIFIC | TERM | FOLLOW-UP | SCOPE | SELF",
+                "intent": "HAUPTFRAGE | SPECIFIC | TERM | FOLLOW-UP | SCOPE | SELF | NONE",
                 "socio_affect": "NONE | NEGATIVE | NEUTRAL | POSITIVE",
                 "content": "ANTWORTTEXT"
                 }}
@@ -647,7 +655,35 @@ if st.session_state.phase == "learning":
             parsed = json.loads(raw)
             intent = parsed["intent"]
             raw_text = parsed["content"]
-            socio_affect = parsed["socio_affect"]
+            socio_affect = parsed["socio_affect"]   
+
+            if intent == "NONE":
+                # reine Gefühlsäußerung → NUR Affect
+                return generate_affect_response(user_text, level)
+            
+            if intent == "SELF":
+                persona_text = SELF_PERSONA[level]
+
+                # Optional: leicht stilistisch glätten (ohne Inhalt zu ändern)
+                style_prompt = f"""
+                Formuliere den folgenden Text stilistisch um mit diesen Regeln:
+                {ANTHRO[level]}
+                WICHTIG:
+                - Inhalt NICHT verändern
+                - Keine neuen Informationen hinzufügen
+                - Keine Dialogangebote
+                Text:
+                {persona_text}
+                """
+
+                styled_persona = client.chat.completions.create(
+                    model=MODEL_MAIN,
+                    temperature=0.2,
+                    messages=[{"role": "user", "content": style_prompt}]
+                ).choices[0].message.content.strip()
+
+                return styled_persona
+            
             affect_text = ""
             if intent in ["SELF", "SCOPE"]:
                 socio_affect = "NONE"
