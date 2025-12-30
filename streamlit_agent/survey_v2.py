@@ -232,6 +232,17 @@ ANTHRO = {
     - converstional, engaging tone
     """
     }
+
+## SCOPRE TOPICS (FOR USER GUIDANCE)
+SCOPE_TOPICS = [
+    "Definition und grundlegende Eigenschaften von Meeresschnee",
+    "Bedeutung von Meeresschnee für marine Ökosysteme",
+    "Entstehung und Aggregationsprozesse",
+    "Methoden zur Sammlung und Untersuchung von Meeresschnee",
+    "Probleme und Verzerrungen bei der Probenahme",
+    "Abbauprozesse und Gründe für eine Abnahme von Meeresschnee"
+]
+
 ############################################################
 # TAG 1 – FRAGEN
 ############################################################
@@ -523,7 +534,7 @@ if st.session_state.phase == "learning":
 
     1. Definition + Bedeutung von Meeresschnee  
     2. Entstehung von Meeresschnee  
-    
+
     INTENT = SPECIFIC  
     → Detailfragen, die NICHT exakt diese Hauptthemen sind  
     → Antwort NUR basierend auf RAG
@@ -535,6 +546,12 @@ if st.session_state.phase == "learning":
     INTENT = FOLLOW-UP  
     → „Wiederhole“, „in anderen Worten“, „erkläre genauer“  
     → oder Pronomenbezüge
+
+    INTENT = SCOPE
+    → Fragen nach einem Überblick, z. B.:
+    - „Was kann ich dich fragen?“
+    - „Welche Themen deckst du ab?“
+    - „Über welche Aspekte von Meeresschnee weißt du etwas?“
 
     Follow-up Regeln:
     - Wiederhole = exakt gleiche letzte Antwort
@@ -579,10 +596,18 @@ if st.session_state.phase == "learning":
     - Keine IUs verwenden
     - Antwort basiert ausschließlich auf RAG-Abschnitt
     - wissenschaftlich korrekt
-    - Stil gemäß Modus
-
+    - Stil gemäß Modus#
     ============================================================
-    [5] STILVALIDIERUNG
+    [5] REGELN FÜR SCOPE-FRAGEN
+    ============================================================
+    Antwortregeln für SCOPE:
+    - KEINE einzelne Information Unit zitieren
+    - KEIN RAG
+    - Kurze strukturierte Übersicht
+    - Aufzählung der Themengebiete
+    - Keine Detailerklärungen
+    ============================================================
+    [6] STILVALIDIERUNG
     ============================================================
     Bevor du die Antwort abschickst, überprüfst du:
 
