@@ -148,7 +148,24 @@ IEs = {
     ],
 
 }
+# ============================================================
+# SELF-PERSONA DEFINITIONS
 
+SELF_PERSONA = {
+    0: (
+        "Ich bin ein automatisiertes, wissensbasiertes Assistenzsystem. "
+        "Meine Aufgabe ist es, sachlich und präzise Fragen zum Thema Meeresschnee zu beantworten."
+    ),
+    1: (
+        "Ich bin ein digitaler Lernassistent, der dich beim Verständnis des Themas Meeresschnee unterstützt. "
+        "Ich helfe dir dabei, zentrale Inhalte strukturiert und verständlich zu erfassen."
+    ),
+    2: (
+        "Ich heiße Milly 😊🌊 "
+        "Ich begleite dich als Lernassistentin durch das Thema Meeresschnee und helfe dir dabei, "
+        "Zusammenhänge besser zu verstehen und Fragen Schritt für Schritt zu klären."
+    )
+}
 # ============================================================
     # ANTHROPOMORPHIE RULES
     # ============================================================
@@ -441,6 +458,13 @@ if st.session_state.phase == "learning":
     - „Welche Themen deckst du ab?“
     - „Über welche Aspekte von Meeresschnee weißt du etwas?“
 
+    INTENT = SELF
+    → Fragen zur Identität oder Rolle des Chatbots, z. B.:
+    - „Wie heißt du?“
+    - „Wer bist du?“
+    - „Was bist du für ein Chatbot?“
+    - „Erzähl mir etwas über dich“
+
     Follow-up Regeln:
     - Wiederhole = exakt gleiche letzte Antwort
     - In anderen Worten = paraphrasieren
@@ -494,6 +518,17 @@ if st.session_state.phase == "learning":
     - Kurze strukturierte Übersicht
     - Aufzählung der Themengebiete
     - Keine Detailerklärungen
+
+    ============================================================
+    [5] REGELN FÜR SELF-FRAGEN
+    ============================================================
+    Antwortregeln für SELF:
+    - KEINE Information Units
+    - KEIN RAG
+    - KEINE fachlichen Inhalte zu Meeresschnee
+    - Antwort basiert ausschließlich auf der definierten Persona (SELF_PERSONA)
+    - Stil MUSS der aktuellen Anthropomorphiestufe entsprechen
+
     ============================================================
     [6] STILVALIDIERUNG
     ============================================================
