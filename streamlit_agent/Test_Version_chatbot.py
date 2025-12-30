@@ -179,11 +179,13 @@ AFFECT_SYSTEM = {
 Du reagierst neutral auf die Äußerung.
 Keine Emotionen, keine Empathie.
 Maximal 1–2 Sätze.
+Stelle KEINE FOLGEFRAGEN oder biete KEINEN DIALOG an.
 """,
     1: """
 Du reagierst höflich und leicht unterstützend.
 Keine Rückfragen, keine Dialogangebote.
 Maximal 2 Sätze.
+Stelle KEINE FOLGEFRAGEN oder biete KEINEN DIALOG an.
 """,
     2: """
 Du reagierst empathisch und freundlich.
