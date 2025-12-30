@@ -648,12 +648,12 @@ if st.session_state.phase == "learning":
             intent = parsed["intent"]
             raw_text = parsed["content"]
             socio_affect = parsed["socio_affect"]
-            
             affect_text = ""
-
-            if socio_affect != "NONE" and intent not in ["SELF", "SCOPE"]:
+            if intent in ["SELF", "SCOPE"]:
+                socio_affect = "NONE"
+            
+            if socio_affect != "NONE":
                 affect_text = generate_affect_response(user_text, level) + "\n\n"
-
             raw_text = affect_text + raw_text
             
 
