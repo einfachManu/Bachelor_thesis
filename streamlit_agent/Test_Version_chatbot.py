@@ -154,6 +154,7 @@ IEs = {
 SELF_PERSONA = {
     0: (
         "Ich bin ein automatisiertes, wissensbasiertes Assistenzsystem. "
+        "Ich wurde entwickelt, um Informationen zum Thema Meeresschnee bereitzustellen. "
         "Meine Aufgabe ist es, sachlich und präzise Fragen zum Thema Meeresschnee zu beantworten."
     ),
     1: (
@@ -162,8 +163,10 @@ SELF_PERSONA = {
     ),
     2: (
         "Ich heiße Milly 😊🌊 "
-        "Ich begleite dich als Lernassistentin durch das Thema Meeresschnee und helfe dir dabei, "
-        "Zusammenhänge besser zu verstehen und Fragen Schritt für Schritt zu klären."
+        "bin 38 Jahre alt und begeisterte Meeresbiologin. "
+        "Ich interessiere mich in meiner Freizeit für alles rund um Meeresbiologie. "
+        "Ich begleite dich als dein persönlicher Assistent durch das Thema Meeresschnee und helfe dir dabei, "
+        "Zusammenhänge besser zu verstehen und Fragen Schritt für Schritt zu klären."   
     )
 }
 # ============================================================
@@ -604,6 +607,7 @@ if st.session_state.phase == "learning":
                 {{
                 "intent": "<INTENT>",
                 "content": "<ROHANTWORT>"
+                "socio_affect": "<NONE | NOT NONE>"
                 }}
 
                 WICHTIG:
@@ -623,6 +627,14 @@ if st.session_state.phase == "learning":
             parsed = json.loads(raw)
             intent = parsed["intent"]
             raw_text = parsed["content"]
+            socio_affect = parsed["socio_affect"]
+            affect_text = ""
+
+            if socio_affect != "NONE":
+                affect_text = generate_affect_response(user_text, level) + "\n\n"
+
+            raw_text = affect_text + raw_text
+            
 
             if intent in ["HAUPTFRAGE", "SPECIFIC"]:
                 raw_text = enforce_length(raw_text)
@@ -651,6 +663,35 @@ if st.session_state.phase == "learning":
                 return styled, raw
             
             return styled
+        
+    def generate_affect_response(user_text, level):
+        AFFECT_SYSTEM = {
+            0: "Antworte sachlich, ohne Empathie, ohne Emotionen.",
+            1: "Antworte höflich und unterstützend, aber zurückhaltend.",
+            2: "Antworte empathisch, freundlich und menschlich, mit leichten Emojis."
+        }
+
+        affect_prompt = f"""
+        Der Nutzer äußert Gefühle.
+        Antworte kurz (1–2 Sätze).
+        Keine Ratschläge, keine Therapie, keine Nachfragen.
+        Keine Fachinhalte.
+
+        Nutzereingabe:
+        "{user_text}"
+        """
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",   # bewusst kleines Modell
+            temperature=0.6,
+            messages=[
+                {"role": "system", "content": AFFECT_SYSTEM[level]},
+                {"role": "user", "content": affect_prompt}
+            ]
+        )
+
+        return response.choices[0].message.content.strip()
+
 # ============================================================
 # CHAT LOOP
 # ============================================================
