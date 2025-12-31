@@ -510,6 +510,7 @@ if st.session_state.phase == "learning":
     - „Was kann ich dich fragen?“
     - „Welche Themen deckst du ab?“
     - „Über welche Aspekte von Meeresschnee weißt du etwas?“
+    - "Bei was kannst du mir helfen / unterstützen?"
 
     INTENT = SELF darf NUR gewählt werden, wenn:
     - explizit nach Name, Identität, Rolle oder Funktion gefragt wird
@@ -609,9 +610,20 @@ if st.session_state.phase == "learning":
 
 
     def classify_input(user_text):
+        mem = st.session_state.memory
         prompt = f"""
         Klassifiziere die folgende Nutzereingabe.
 
+        LETZTE ANTWORT:
+        "{mem['last_bot_answer']}"
+
+        REGEL:
+        Wenn sich die Eingabe auf die letzte Antwort bezieht
+        (z. B. "das", "es", "genauer", "erklär", "weiter", "Was", "Wiederhole",...),
+        oder wenn noch keine Letzte Antwort existiert und der Nutzer eine Einstiegsfrage stellt
+        (z. B. "Was kannst du?", "Welche Themen...", "Was darf ich fragen?", "Wo unterstützt du mich?",...),
+        dann ist sie IMMER: MARINE_SNOW.
+        
         ERLAUBT sind NUR:
         - Meeresschnee (fachlich)
         - Gefühle / Befinden
@@ -745,6 +757,7 @@ if st.session_state.phase == "learning":
                 - Inhalt NICHT verändern
                 - Keine neuen Informationen hinzufügen
                 - Keine Dialogangebote
+                - Gib nur gefragte Informationen zurück (Bsp. Name bei "Wie heißt du?" oder Alles bei "Erzähl mir etwas über dich")
                 Text:
                 {persona_text}
                 """
@@ -765,11 +778,13 @@ if st.session_state.phase == "learning":
             Formuliere den folgenden Text stilistisch um mit diesen Regeln:
             {ANTHRO[level]}
             SEHR WICHTIG:
-            - Erwähne NIEMALS die Anthropomorphiestufe.
-            - Keine Hinweise auf Regeln.
-            - Keine Metakommentare.
-            - Gib nur den Text zurück.
-            Text: {raw_text}
+            - Beginne die Antwort IMMER direkt mit fachlichem Inhalt
+            - KEINE Gesprächseinstiege (z. B. „Wow“, „Hey“, „Hast du schon mal“)
+            - KEINE rhetorischen Fragen
+            - KEINE Ausrufe zur Aufmerksamkeitserzeugung
+            - Keine Smalltalk-Elemente
+            - Keine Meta-Kommentare
+            Text: {raw_text}    
             """
             
             styled = client.chat.completions.create(
