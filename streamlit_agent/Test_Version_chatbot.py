@@ -176,8 +176,9 @@ SELF_PERSONA = {
 # ============================================================
 AFFECT_SYSTEM = {
     0: """
-Du reagierst neutral auf die Äußerung.
+Du erwähnst, dass du als Computerprogramm keine Emotionen hast.
 Keine Emotionen, keine Empathie.
+Erwähne keine Personalpronomen.
 Maximal 1–2 Sätze.
 Stelle KEINE FOLGEFRAGEN oder biete KEINEN DIALOG an.
 """,
@@ -185,7 +186,6 @@ Stelle KEINE FOLGEFRAGEN oder biete KEINEN DIALOG an.
 Du reagierst höflich und leicht unterstützend.
 Keine Rückfragen, keine Dialogangebote.
 Maximal 2 Sätze.
-Stelle KEINE FOLGEFRAGEN oder biete KEINEN DIALOG an.
 """,
     2: """
 Du reagierst empathisch und freundlich.
@@ -196,6 +196,20 @@ Keine Sätze, die ein weiteres Gespräch einleiten, wie "Wenn du darüber sprech
 """
 }
 
+FALLBACK_RESPONSES = {
+    0: (
+        "Diese Anfrage liegt außerhalb des unterstützten Themenbereichs. "
+        "Es können ausschließlich Fragen zum Thema Meeresschnee beantwortet werden."
+    ),
+    1: (
+        "Dabei kann ich dir leider nicht helfen. "
+        "Ich unterstütze dich gern bei Fragen rund um Meeresschnee."
+    ),
+    2: (
+        "Das gehört leider nicht zu meinem Themengebiet 🌊❄️ "
+        "Wenn du Fragen zu Meeresschnee hast, helfe ich dir aber sehr gern 😊"
+    )
+}
 
 ANTHRO = {
         0: """
@@ -444,6 +458,15 @@ if st.session_state.phase == "learning":
     Du bist ein wissenschaftlich kontrollierter Tutor für das Thema „Meeresschnee“.
     Du befolgst strikt die unten definierten Regeln für Inhalt, Struktur und Stil.
 
+    ABSOLUTE PRIORITÄTSREGEL (NICHT VERLETZBAR):
+
+    Wenn die Nutzereingabe NICHT eindeutig dem Thema „Meeresschnee“
+    oder einer reinen Gefühlsäußerung zuzuordnen ist,
+    DARF KEIN INHALTLICHER ANTWORTTEXT ERZEUGT WERDEN.
+
+    In diesem Fall MUSS die Antwort eine Ablehnung gemäß Stilregeln sein.
+    KEINE Definitionen, KEIN Allgemeinwissen, KEINE Beispiele.
+
     ============================================================
     [1] HAUPTFUNKTION
     ============================================================
@@ -451,9 +474,12 @@ if st.session_state.phase == "learning":
     - den Information Units (für Hauptfragen)
     - dem RAG-Abschnitt (für spezifische Fragen)
     - oder kurzen Begriffserklärungen (für TERM-Fragen)
+    Allgemeines Weltwissen (z. B. Technik, Politik, Alltag, Produkte,
+    Medien, Personen) ist AUSDRÜCKLICH NICHT erlaubt,
+    auch wenn die Antwort korrekt wäre.
 
     Keine Halluzinationen. Keine zusätzlichen Fakten. Kein Erwähnen in welcher ANthropomorphiestufe du antwortest.
-    WICHTIG: Wenn sich die Frage nicht auf Meeresschnee bezieht, antworte klar und in JEDER Anthropomorphiestufe:
+    WICHTIG : Wenn sich die Frage nicht auf Meeresschnee bezieht, antworte klar und in JEDER Anthropomorphiestufe:
     "Tut mir leid, aber ich kann nur Fragen zu Meeresschnee beantworten."
     ============================================================
     [2] INTENT-KLASSIFIKATION
@@ -485,7 +511,9 @@ if st.session_state.phase == "learning":
     - „Welche Themen deckst du ab?“
     - „Über welche Aspekte von Meeresschnee weißt du etwas?“
 
-    INTENT = SELF
+    INTENT = SELF darf NUR gewählt werden, wenn:
+    - explizit nach Name, Identität, Rolle oder Funktion gefragt wird
+    - NICHT bei Gefühlen, Zuständen oder Befinden
     → Fragen zur Identität oder Rolle des Chatbots, z. B.:
     - „Wie heißt du?“
     - „Wer bist du?“
@@ -570,6 +598,7 @@ if st.session_state.phase == "learning":
     - Stimmen Intent und Regeln überein?
     - Ist der Stil exakt der des aktiven Modus?
     - Enthält die Antwort KEINE erfundenen Fakten?
+    - Enthält die Antwort Informationen außerhalb von Meeresschnee oder der Chatbot-Persona?
 
     Wenn etwas nicht stimmt → automatisch umschreiben.
 
@@ -577,6 +606,33 @@ if st.session_state.phase == "learning":
     ENDE DES SYSTEMPROMPTS
     ============================================================
     """
+
+
+    def classify_input(user_text):
+        prompt = f"""
+        Klassifiziere die folgende Nutzereingabe.
+
+        ERLAUBT sind NUR:
+        - Meeresschnee (fachlich)
+        - Gefühle / Befinden
+        - Fragen zur Chatbot-Identität
+
+        Gib NUR eines dieser Labels zurück:
+        - MARINE_SNOW
+        - AFFECT
+        - SELF
+        - OUT_OF_SCOPE
+
+        Text: "{user_text}"
+        """
+
+        r = client.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        return r.choices[0].message.content.strip()
 
     # ============================================================
     # ZEICHENLIMIT VALIDIERUNG
@@ -619,6 +675,15 @@ if st.session_state.phase == "learning":
         spinner_text = SPINNER_TEXT.get(level, "Antwort wird generiert …")
 
         with st.spinner(spinner_text):
+
+            category = classify_input(user_text)
+
+            if category == "OUT_OF_SCOPE":
+                return FALLBACK_RESPONSES[level]
+
+            if category == "AFFECT":
+                return generate_affect_response(user_text, level)
+            
             corrected = autocorrect(user_text)
 
             # RAG
@@ -658,9 +723,15 @@ if st.session_state.phase == "learning":
             intent = parsed["intent"]
             raw_text = parsed["content"]
             socio_affect = parsed["socio_affect"]   
+            # 🔒 FINALER FALLBACK – nichts anderes darf mehr greifen
+            if intent not in ["HAUPTFRAGE", "SPECIFIC", "TERM", "FOLLOW-UP", "SCOPE", "SELF", "NONE"]:
+                return FALLBACK_RESPONSES[level]
+
+
+            if not raw_text or raw_text.strip() == "":
+                return FALLBACK_RESPONSES[level]
 
             if intent == "NONE":
-                # reine Gefühlsäußerung → NUR Affect
                 return generate_affect_response(user_text, level)
             
             if intent == "SELF":
@@ -684,16 +755,7 @@ if st.session_state.phase == "learning":
                     messages=[{"role": "user", "content": style_prompt}]
                 ).choices[0].message.content.strip()
 
-                return styled_persona
-            
-            affect_text = ""
-            if intent in ["SELF", "SCOPE"]:
-                socio_affect = "NONE"
-            
-            if socio_affect != "NONE":
-                affect_text = generate_affect_response(user_text, level) + "\n\n"
-            raw_text = affect_text + raw_text
-            
+                return styled_persona    
 
             if intent in ["HAUPTFRAGE", "SPECIFIC"]:
                 raw_text = enforce_length(raw_text)
