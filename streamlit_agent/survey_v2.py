@@ -429,6 +429,11 @@ if "survey_index" not in st.session_state:
 if "qual_index" not in st.session_state:
     st.session_state.qual_index = 0
 
+if "timer_started" not in st.session_state:
+    st.session_state.timer_started = False
+
+
+
 ############################################################
 # PHASE 1 – STARTSCREEN
 ############################################################
@@ -469,7 +474,7 @@ if st.session_state.phase == "start":
 # PHASE 2 – LERNPHASE (CHATBOT + TIMER)
 ############################################################
 
-if st.session_state.phase == "learning":
+if "memory" in st.session_state:
     st.title("Lernphase – 5 Minuten")
 
     if st.session_state.start_time is None:
@@ -499,7 +504,7 @@ if st.session_state.phase == "learning":
     "\n" \
     "- Entstehung von Meeresschnee  " \
     )
-    level = st.radio("Anthropomorphiestufe:", [0, 1, 2], horizontal=True)
+    level = random.choice([0, 1, 2])
 
     AVATARS = {
         0: "🟧",
@@ -851,8 +856,12 @@ if st.session_state.phase == "learning":
             "avatar": None
         })
 
-        # 🔑 HIER fehlte der eigentliche Aufruf
         styled = generate_answer(user_text, level)
+
+        if not st.session_state.timer_started:
+            st.session_state.start_time = time.time()
+            st.session_state.timer_started = True
+            
         st.session_state.memory["last_bot_answer"] = styled
 
         st.chat_message("assistant", avatar=assistant_avatar).write(styled)
