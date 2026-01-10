@@ -505,7 +505,7 @@ if st.session_state.phase == "learning":
     "\n" \
     "- Entstehung von Meeresschnee  " \
     )
-    level = random.choice([0, 1, 2])
+    level = st.session_state.anthro
 
     AVATARS = {
         0: "🟧",
