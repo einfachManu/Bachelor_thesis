@@ -474,20 +474,24 @@ if st.session_state.phase == "start":
 # PHASE 2 – LERNPHASE (CHATBOT + TIMER)
 ############################################################
 
-if "memory" in st.session_state:
+if st.session_state.phase == "learning":
+
     st.title("Lernphase – 5 Minuten")
 
-    elapsed = time.time() - st.session_state.start_time
-    remaining = max(0, 300 - elapsed)
-    
-    mins = int(remaining) // 60
-    secs = int(remaining) % 60
+    if st.session_state.timer_started:
+        elapsed = time.time() - st.session_state.start_time
+        remaining = max(0, 300 - elapsed)
 
-    st.subheader(f"Restzeit: {mins}:{secs:02d}")
+        mins = int(remaining) // 60
+        secs = int(remaining) % 60
 
-    if remaining <= 0:
-        st.session_state.phase = "learning_done"
-        st.rerun()
+        st.subheader(f"Restzeit: {mins}:{secs:02d}")
+
+        if remaining <= 0:
+            st.session_state.phase = "learning_done"
+            st.rerun()
+    else:
+        st.info("⏳ Die Lernzeit startet mit der ersten Antwort des Chatbots.")
 
     # ============================================================
     # STREAMLIT UI
