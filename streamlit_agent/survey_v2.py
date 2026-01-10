@@ -479,7 +479,7 @@ if st.session_state.phase == "learning":
     "\n" \
     "- Entstehung von Meeresschnee  " \
     )
-    level = st.radio("Anthropomorphiestufe:", [0, 1, 2], horizontal=True)
+    level = random.choice([0, 1, 2])
 
     AVATARS = {
         0: "🟧",
