@@ -470,6 +470,26 @@ if st.session_state.phase == "start":
 ############################################################
 
 if st.session_state.phase == "learning":
+    st.title("Lernphase – 5 Minuten")
+
+    if st.session_state.start_time is None:
+        st.session_state.start_time = time.time()
+
+    elapsed = time.time() - st.session_state.start_time
+    remaining = max(0, 300 - elapsed)
+    
+    mins = int(remaining) // 60
+    secs = int(remaining) % 60
+
+    st.subheader(f"Restzeit: {mins}:{secs:02d}")
+
+    if remaining <= 0:
+        st.session_state.phase = "learning_done"
+        st.rerun()
+
+    # ============================================================
+    # STREAMLIT UI
+    # ============================================================
 
     st.set_page_config(page_title="Marine Snow Chatbot", page_icon="🌊")
     st.title("Marine Snow Learning Assistant")
@@ -479,7 +499,7 @@ if st.session_state.phase == "learning":
     "\n" \
     "- Entstehung von Meeresschnee  " \
     )
-    level = random.choice([0, 1, 2])
+    level = st.radio("Anthropomorphiestufe:", [0, 1, 2], horizontal=True)
 
     AVATARS = {
         0: "🟧",
@@ -671,7 +691,7 @@ if st.session_state.phase == "learning":
     """ 
 
         r = client.chat.completions.create(
-            model= MODEL_SPELL,
+            model="gpt-4o-mini",
             temperature=0,
             messages=[{"role": "user", "content": prompt}]
         )
