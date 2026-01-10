@@ -477,9 +477,6 @@ if st.session_state.phase == "start":
 if "memory" in st.session_state:
     st.title("Lernphase – 5 Minuten")
 
-    if st.session_state.start_time is None:
-        st.session_state.start_time = time.time()
-
     elapsed = time.time() - st.session_state.start_time
     remaining = max(0, 300 - elapsed)
     
@@ -861,7 +858,6 @@ if "memory" in st.session_state:
         if not st.session_state.timer_started:
             st.session_state.start_time = time.time()
             st.session_state.timer_started = True
-            
         st.session_state.memory["last_bot_answer"] = styled
 
         st.chat_message("assistant", avatar=assistant_avatar).write(styled)
