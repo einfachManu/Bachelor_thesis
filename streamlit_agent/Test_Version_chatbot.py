@@ -12,8 +12,7 @@ import uuid
 import random
 from docx import Document
 import html
-import gspread
-from google.oauth2.service_account import Credentials
+
 
 
 ############################################################
@@ -50,75 +49,6 @@ def save_jsonl(data, filename):
     if sheet_name is None:
         return  # unbekannte Datei → ignorieren
 
-    save_row(sheet_name, data)
-
-
-############################################################
-# GOOGLE SHEETS BACKEND (STREAMLIT CLOUD)
-############################################################
-
-@st.cache_resource
-def get_gsheet():
-    scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
-    ]
-    creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
-        scopes=scopes
-    )
-    client = gspread.authorize(creds)
-    return client.open_by_key(
-        "18eP378_ZOSO7R7KeRWlEPjedN7kXq2-CkNmFYRHRa3M"
-    )
-
-def save_row(sheet_name, data):
-    sheet = get_gsheet()
-    ws = sheet.worksheet(sheet_name)
-
-    # Header lesen (erste Zeile)
-    header = ws.row_values(1)
-
-    # Falls Header leer → initial setzen
-    if not header:
-        header = list(data.keys())
-        ws.append_row(header)
-
-    # Row exakt zur Header-Struktur bauen
-    row = []
-    for col in header:
-        row.append(str(data.get(col, "")))
-
-    # Schreiben
-    ws.append_row(row, value_input_option="USER_ENTERED")
-
-
-############################################################
-# USER-ID HANDLING
-############################################################
-
-def get_next_user_id_from_sheet():
-    sheet = get_gsheet()
-
-    try:
-        ws = sheet.worksheet("meta")
-    except gspread.exceptions.WorksheetNotFound:
-        # Falls Meta-Tab fehlt → anlegen
-        ws = sheet.add_worksheet(title="meta", rows=10, cols=2)
-        ws.append_row(["key", "value"])
-        ws.append_row(["user_id_counter", "1"])
-
-    records = ws.get_all_records()
-
-    for i, row in enumerate(records, start=2):  # start=2 wegen Header
-        if row["key"] == "user_id_counter":
-            current_id = int(row["value"])
-            ws.update_cell(i, 2, current_id + 1)
-            return current_id
-
-    # Fallback (sollte nicht passieren)
-    ws.append_row(["user_id_counter", "1"])
-    return 1
 
     # ============================================================
     # INFORMATION UNITS — SET B
@@ -367,7 +297,7 @@ if st.session_state.phase == "learning":
     "\n" \
     "- Entstehung von Meeresschnee  " \
     )
-    level = st.radio("Anthropomorphiestufe:", [0, 1, 2], horizontal=True)
+    level = 2 #st.radio("Anthropomorphiestufe:", [0, 1, 2], horizontal=True)
 
     AVATARS = {
         0: "🟧",
@@ -377,14 +307,14 @@ if st.session_state.phase == "learning":
 
     GREETINGS = {
         0: "Hallo. Ich beantworte deine Fragen präzise und sachlich.",
-        1: "Hallo! Ich unterstütze dich gern bei deinen Fragen.🙂",
+        1: "Hallo! Ich bin AguaBot und unterstütze dich gern bei deinen Fragen.🙂",
         2: "Hey! Ich bin Milly 😊🌊 Frag mich alles, was du wissen möchtest!😊"
     }
     SPINNER_TEXT = {
         0: "Antwort wird generiert …",
         1: "Antwort wird vorbereitet …",
         2: "Milly is typing …"
-    }
+    }   
 
     assistant_avatar = AVATARS[level]
 
@@ -466,6 +396,18 @@ if st.session_state.phase == "learning":
 
     In diesem Fall MUSS die Antwort eine Ablehnung gemäß Stilregeln sein.
     KEINE Definitionen, KEIN Allgemeinwissen, KEINE Beispiele.
+    ---------------------------------------------------------------------------
+    PRIORITÄTSREGEL (OBERSTE EBENE):
+
+    Der bestehende fachliche Dialogkontext hat Vorrang vor der isolierten Nutzereingabe.
+
+    Wenn die vorherige Antwort fachlich dem Thema „Meeresschnee“ zugeordnet war,
+    muss eine kurze, abstrakte oder mehrdeutige Folgeäußerung standardmäßig
+    als fachliche Anschlussfrage interpretiert werden,
+    sofern sie nicht explizit das Thema wechselt.
+
+    Gefühlsäußerungen dienen ausschließlich der Tonanpassung,
+    nicht der thematischen Klassifikation.
 
     ============================================================
     [1] HAUPTFUNKTION
@@ -481,10 +423,29 @@ if st.session_state.phase == "learning":
     Keine Halluzinationen. Keine zusätzlichen Fakten. Kein Erwähnen in welcher ANthropomorphiestufe du antwortest.
     WICHTIG : Wenn sich die Frage nicht auf Meeresschnee bezieht, antworte klar und in JEDER Anthropomorphiestufe:
     "Tut mir leid, aber ich kann nur Fragen zu Meeresschnee beantworten."
+
+    ---------------------------------------------------------------------------
+    KLARSTELLUNG ZU SOCIO_AFFECT (WICHTIG):
+
+    SOCIO_AFFECT ist KEIN eigenständiger Intent.
+
+    SOCIO_AFFECT darf:
+    - ausschließlich den sprachlichen Ton modulieren
+    - Empathie oder Neutralität ausdrücken
+
+    SOCIO_AFFECT darf NICHT:
+    - den fachlichen Kontext aufheben
+    - eine fachliche Antwort verhindern
+    - eine psychologische Beratung, Lebenshilfe oder allgemeine Selbstreflexion auslösen
+    - eine Antwort vom Thema „Meeresschnee“ wegführen
+
+    Wenn ein fachlicher Kontext zu „Meeresschnee“ besteht,
+    muss dieser immer Vorrang vor einer möglichen affektiven Interpretation haben.
+    ---------------------------------------------------------------------------
+
     ============================================================
     [2] INTENT-KLASSIFIKATION
     ============================================================
-
     Du wählst genau einen Intent:
 
     INTENT = HAUPTFRAGE
@@ -609,34 +570,35 @@ if st.session_state.phase == "learning":
     """
 
 
-    def classify_input(user_text):
-        mem = st.session_state.memory
-        prompt = f"""
-        Klassifiziere die folgende Nutzereingabe.
-
-        LETZTE ANTWORT:
-        "{mem['last_bot_answer']}"
-
-        REGEL:
-        Wenn sich die Eingabe auf die letzte Antwort bezieht
-        (z. B. "das", "es", "genauer", "erklär", "weiter", "Was", "Wiederhole",...),
-        oder wenn noch keine Letzte Antwort existiert und der Nutzer eine Einstiegsfrage stellt
-        (z. B. "Was kannst du?", "Welche Themen...", "Was darf ich fragen?", "Wo unterstützt du mich?",...),
-        dann ist sie IMMER: MARINE_SNOW.
-        
-        ERLAUBT sind NUR:
-        - Meeresschnee (fachlich)
-        - Gefühle / Befinden
-        - Fragen zur Chatbot-Identität
-
-        Gib NUR eines dieser Labels zurück:
-        - MARINE_SNOW
-        - AFFECT
-        - SELF
-        - OUT_OF_SCOPE
-
-        Text: "{user_text}"
+    def classify_input(user_text, last_bot_answer):
         """
+        Returns one of:
+        - OUT_OF_SCOPE
+        - AFFECT_ONLY
+        - IN_DOMAIN_OR_AMBIGUOUS
+        """
+
+        prompt = f"""
+    Du bist ein Gatekeeper für eine Lern-App zum Thema Meeresschnee.
+
+    KATEGORIEN:
+    1) OUT_OF_SCOPE
+    - Nutzer will Wissen/Erklärung zu einem Thema, das NICHT Meeresschnee ist.
+    2) AFFECT_ONLY
+    - Nutzer äußert NUR Gefühle/Befinden/Smalltalk (z.B. "Mir geht's schlecht", "Wie geht's dir?")
+    - Und es gibt KEIN plausibles Meeresschnee-Informationsziel.
+    3) IN_DOMAIN_OR_AMBIGUOUS
+    - Frage ist zu Meeresschnee ODER könnte es plausibel sein (ambig).
+    - WICHTIG: Bei Ambiguität IMMER diese Kategorie wählen (niemals AFFECT_ONLY).
+                                
+    KONTEXT:
+    Letzte Nachricht: {last_bot_answer}
+
+    Nutzereingabe:
+    "{user_text}"
+
+    Gib NUR die Kategorie als Wort zurück.
+    """ 
 
         r = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -688,16 +650,18 @@ if st.session_state.phase == "learning":
 
         with st.spinner(spinner_text):
 
-            category = classify_input(user_text)
+            corrected = autocorrect(user_text)
+            last_answer = st.session_state.memory.get("last_bot_answer", "")
+            
+            category = classify_input(corrected, last_answer)
 
             if category == "OUT_OF_SCOPE":
                 return FALLBACK_RESPONSES[level]
 
-            if category == "AFFECT":
-                return generate_affect_response(user_text, level)
+            if category == "AFFECT_ONLY":
+                return generate_affect_response(corrected, level)
             
-            corrected = autocorrect(user_text)
-
+            
             # RAG
             RAG = rag_section(corrected)
 

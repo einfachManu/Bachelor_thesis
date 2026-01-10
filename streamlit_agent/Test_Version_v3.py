@@ -9,64 +9,12 @@ from dotenv import load_dotenv
 import chromadb
 import pdfplumber
 import uuid
-import random
+import random   
 from docx import Document
 import html
-import gspread
-from google.oauth2.service_account import Credentials
 
-def docx_to_html(path):
-    doc = Document(path)
-    html_lines = []
 
-    for para in doc.paragraphs:
-        line = ""
 
-        for run in para.runs:
-            text = html.escape(run.text)
-
-            if not text:
-                continue
-
-            if run.bold and run.italic:
-                text = f"<strong><em>{text}</em></strong>"
-            elif run.bold:
-                text = f"<strong>{text}</strong>"
-            elif run.italic:
-                text = f"<em>{text}</em>"
-
-            line += text
-
-        line = line.strip()
-
-        if not line:
-            html_lines.append("<br>")
-            continue
-
-        # einfache Listen-Erkennung
-        if para.text.strip().startswith("-"):
-            clean = para.text.strip().lstrip("-").strip()
-            html_lines.append(f"<li>{html.escape(clean)}</li>")
-        else:
-            html_lines.append(f"<p>{line}</p>")
-
-    # <li> korrekt einbetten
-    final_html = []
-    in_list = False
-
-    for line in html_lines:
-        if line.startswith("<li>") and not in_list:
-            final_html.append("<ul>")
-            in_list = True
-        if not line.startswith("<li>") and in_list:
-            final_html.append("</ul>")
-            in_list = False
-        final_html.append(line)
-
-    if in_list:
-        final_html.append("</ul>")
-
-    return "\n".join(final_html)
 ############################################################
 # LOAD ENV + OPENAI
 ############################################################
@@ -81,6 +29,7 @@ DOCX_PATH = "streamlit_agent/kurzfassung_ablauf_umfrage.docx"
 ############################################################
 # JSONL SAVE FUNCTIONS
 ############################################################
+CONTENT_TYPE = {"CORE", "DETAIL", "META", "Overview"}
 
 def save_jsonl(data, filename):
     """
@@ -101,77 +50,8 @@ def save_jsonl(data, filename):
     if sheet_name is None:
         return  # unbekannte Datei → ignorieren
 
-    save_row(sheet_name, data)
 
-
-############################################################
-# GOOGLE SHEETS BACKEND (STREAMLIT CLOUD)
-############################################################
-
-@st.cache_resource
-def get_gsheet():
-    scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
-    ]
-    creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
-        scopes=scopes
-    )
-    client = gspread.authorize(creds)
-    return client.open_by_key(
-        "18eP378_ZOSO7R7KeRWlEPjedN7kXq2-CkNmFYRHRa3M"
-    )
-
-def save_row(sheet_name, data):
-    sheet = get_gsheet()
-    ws = sheet.worksheet(sheet_name)
-
-    # Header lesen (erste Zeile)
-    header = ws.row_values(1)
-
-    # Falls Header leer → initial setzen
-    if not header:
-        header = list(data.keys())
-        ws.append_row(header)
-
-    # Row exakt zur Header-Struktur bauen
-    row = []
-    for col in header:
-        row.append(str(data.get(col, "")))
-
-    # Schreiben
-    ws.append_row(row, value_input_option="USER_ENTERED")
-
-
-############################################################
-# USER-ID HANDLING
-############################################################
-
-def get_next_user_id_from_sheet():
-    sheet = get_gsheet()
-
-    try:
-        ws = sheet.worksheet("meta")
-    except gspread.exceptions.WorksheetNotFound:
-        # Falls Meta-Tab fehlt → anlegen
-        ws = sheet.add_worksheet(title="meta", rows=10, cols=2)
-        ws.append_row(["key", "value"])
-        ws.append_row(["user_id_counter", "1"])
-
-    records = ws.get_all_records()
-
-    for i, row in enumerate(records, start=2):  # start=2 wegen Header
-        if row["key"] == "user_id_counter":
-            current_id = int(row["value"])
-            ws.update_cell(i, 2, current_id + 1)
-            return current_id
-
-    # Fallback (sollte nicht passieren)
-    ws.append_row(["user_id_counter", "1"])
-    return 1
-
-# ============================================================
+    # ============================================================
     # INFORMATION UNITS — SET B
     # ============================================================
 
@@ -210,7 +90,7 @@ SELF_PERSONA = {
             " du hast keinen Namen. "
             " du bist ein automatisiertes, wissensbasiertes Assistenzsystem. "
             " du wurdest entwickelt, um Informationen zum Thema Meeresschnee bereitzustellen. "
-            " deine Aufgabe ist es, sachlich und präzise Fragen zum Thema Meeresschnee zu beantworten."
+                " deine Aufgabe ist es, sachlich und präzise Fragen zum Thema Meeresschnee zu beantworten."
             )
     },
     1: {    
@@ -323,7 +203,6 @@ SCOPE_TOPICS = [
     "Abbauprozesse und Gründe für eine Abnahme von Meeresschnee"
 ]
 
-
 ############################################################
 # TAG 1 – FRAGEN
 ############################################################
@@ -412,7 +291,7 @@ qualitative_questions = [
 ############################################################
 
 if "phase" not in st.session_state:
-    st.session_state.phase = "start"
+    st.session_state.phase = "learning"
 
 if "user_id" not in st.session_state:
     st.session_state.user_id = None
@@ -429,45 +308,7 @@ if "survey_index" not in st.session_state:
 if "qual_index" not in st.session_state:
     st.session_state.qual_index = 0
 
-############################################################
-# PHASE 1 – STARTSCREEN
-############################################################
 
-if st.session_state.phase == "start":
-    st.title("Willkommen zur Umfrage")
-
-    study_html = docx_to_html(DOCX_PATH)
-
-    st.markdown(
-        f"<div style='max-width: 900px'>{study_html}</div>",
-        unsafe_allow_html=True
-    )
-
-    agree = st.checkbox(
-        "Ich versichere, dass ich mit dem Ablauf und den Vorgaben der Umfrage vertraut bin."
-    )
-
-    if agree and st.button("Weiter"):
-
-        #USER-ID EINMALIG VERGEBEN
-        if st.session_state.user_id is None:
-            st.session_state.user_id = get_next_user_id_from_sheet()
-
-            save_jsonl({
-                "type": "user_start",
-                "user_id": st.session_state.user_id,
-                "timestamp": datetime.now().isoformat()
-            }, "users.jsonl")
-
-        st.session_state.phase = "learning"
-        st.rerun()
-
-
-
-
-############################################################
-# PHASE 2 – LERNPHASE (CHATBOT + TIMER)
-############################################################
 
 if st.session_state.phase == "learning":
 
@@ -671,7 +512,7 @@ if st.session_state.phase == "learning":
     """ 
 
         r = client.chat.completions.create(
-            model= MODEL_SPELL,
+            model="gpt-4o-mini",
             temperature=0,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -811,6 +652,8 @@ if st.session_state.phase == "learning":
                 return styled, raw
             
             return styled
+        
+
 # ============================================================
 # CHAT LOOP
 # ============================================================
@@ -858,164 +701,3 @@ if st.session_state.phase == "learning":
             "anthro": st.session_state.anthro,
             "timestamp": datetime.now().isoformat()
             }, "chatlogs.jsonl")
-    if st.button("Lernphase vorzeitig beenden"):
-        st.session_state.phase = "learning_done"
-        st.rerun()
-############################################################
-# PHASE 3 – ZEIT ABGELAUFEN
-############################################################
-
-if st.session_state.phase == "learning_done":
-    st.error("⏱️ Deine Zeit ist abgelaufen!")
-    if st.button("Mit der Umfrage beginnen"):
-        st.session_state.phase = "survey"
-        st.rerun()
-
-
-############################################################
-# PHASE 4 – UMFRAGE TAG 1
-############################################################
-
-if st.session_state.phase == "survey":
-    q = tag1_questions[st.session_state.survey_index]
-    st.subheader(f"Frage {q['nr']}: {q['text']}")
-
-    if q["type"] == "likert":
-        ans = st.slider("", 1, 7)
-
-    elif q["type"] == "single":
-        ans = st.radio("", q["options"])
-
-    elif q["type"] == "multi":
-        ans = st.multiselect("", q["options"])
-
-    elif q["type"] == "short":
-        ans = st.text_input("")
-
-    elif q["type"] == "paragraph":
-        ans = st.text_area("")
-
-    if st.button("Weiter"):
-        save_jsonl({
-            "type": "response",
-            "user_id": st.session_state.user_id,
-            "question_nr": q["nr"],
-            "question_text": q["text"],
-            "answer": str(ans),
-            "timestamp": datetime.now().isoformat()
-        }, "responses.jsonl")
-
-        st.session_state.survey_index += 1
-
-        if st.session_state.survey_index >= len(tag1_questions):
-            st.session_state.phase = "qualitative"
-
-        st.rerun()
-
-############################################################
-# PHASE 4b – QUALITATIVE CHATBOT-BEFRAGUNG
-############################################################
-
-if st.session_state.phase == "qualitative":
-    idx = st.session_state.qual_index
-    q = qualitative_questions[idx]
-
-    answer = None
-    q = qualitative_questions[st.session_state.qual_index]
-
-    st.subheader(f"Offene Frage {q['nr'] + 1}")
-    st.write(q["text"])
-
-    if q["type"] == "likert":
-        answer = st.slider(
-            "Bitte wähle eine Zahl (1 = sehr gering, 7 = sehr hoch)",
-            1, 7,
-            key=f"qual_{idx}"
-        )
-
-    elif q["type"] == "paragraph":
-        answer = st.text_area(
-            "Deine Antwort:",
-            height=180,
-            placeholder="Bitte frei antworten …",
-            key=f"qual_{idx}"
-        )
-
-    if st.button("Weiter"):
-        ##if answer in (None, ""):
-            ##st.warning("Bitte beantworte die Frage, bevor du fortfährst.")
-            ##st.stop()
-
-        save_jsonl({
-            "type": "qualitative_response",
-            "user_id": st.session_state.user_id,
-            "anthro": st.session_state.anthro,
-            "question_nr": q["nr"],
-            "question_text": q["text"],
-            "answer": str(answer),
-            "timestamp": datetime.now().isoformat()
-        }, "qualitative_responses.jsonl")
-
-        st.session_state.qual_index += 1
-
-        if st.session_state.qual_index >= len(qualitative_questions):
-            st.session_state.phase = "end"
-
-        st.rerun()
-
-
-
-############################################################
-# PHASE 5 – ABSCHLUSS + FOLLOW-UP OPT-IN
-############################################################
-
-if st.session_state.phase == "end":
-
-    st.success("🎉 Danke für deine Teilnahme!")
-
-    st.markdown("### 🔑 Deine persönliche Teilnehmer-ID")
-    st.code(str(st.session_state.user_id), language="text")
-
-    st.info(
-        "Du benötigst diese ID für den zweiten Teil der Umfrage.\n\n"
-        "Optional kannst du dich per SMS erinnern lassen."
-    )
-
-    st.markdown("### 📱 Erinnerung per SMS (optional)")
-
-    phone = st.text_input(
-        "Telefonnummer (Bitte gib diese in folgendem Format an: +491701234567)",
-        placeholder="+491701234567"
-    )
-    phone_clean = phone.strip()
-
-    if not phone_clean.startswith("+"):
-        phone_clean = "+" + phone_clean
-
-    opt_in = st.checkbox(
-        "Ich willige ein, nach ca 8 Stunden per SMS einen Link zur zweiten Umfrage zu erhalten."
-    )
-
-    if st.button("Umfrage abschließen"):
-        if opt_in:
-            if not phone.startswith("+") or len(phone) < 8:
-                st.error("Bitte eine gültige Telefonnummer im internationalen Format angeben.")
-                st.stop()
-
-            now = datetime.now()+ timedelta(hours=1)
-            followup_due = now + timedelta(seconds=30) # +30 Sekunden für Testzwecke (sonst 60*60*8  = 8 Stunden)
-
-            save_row("followups", {
-                "participant_id": st.session_state.user_id,
-                "phone_e164": phone_clean,
-                "opt_in": True,
-                "t1_completed_at": now.isoformat(),
-                "followup_due_at": followup_due.isoformat(),
-                "followup_link": f"https://bachelorthesis-manuel-schwarz-retention-task.streamlit.app/?pid={st.session_state.user_id}",
-                "sent_at": "",
-                "status": "PENDING",
-                "error": ""
-            })
-
-        st.success("✅ Vielen Dank! Du kannst das Fenster jetzt schließen.")
-

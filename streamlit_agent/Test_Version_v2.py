@@ -12,61 +12,9 @@ import uuid
 import random
 from docx import Document
 import html
-import gspread
-from google.oauth2.service_account import Credentials
 
-def docx_to_html(path):
-    doc = Document(path)
-    html_lines = []
 
-    for para in doc.paragraphs:
-        line = ""
 
-        for run in para.runs:
-            text = html.escape(run.text)
-
-            if not text:
-                continue
-
-            if run.bold and run.italic:
-                text = f"<strong><em>{text}</em></strong>"
-            elif run.bold:
-                text = f"<strong>{text}</strong>"
-            elif run.italic:
-                text = f"<em>{text}</em>"
-
-            line += text
-
-        line = line.strip()
-
-        if not line:
-            html_lines.append("<br>")
-            continue
-
-        # einfache Listen-Erkennung
-        if para.text.strip().startswith("-"):
-            clean = para.text.strip().lstrip("-").strip()
-            html_lines.append(f"<li>{html.escape(clean)}</li>")
-        else:
-            html_lines.append(f"<p>{line}</p>")
-
-    # <li> korrekt einbetten
-    final_html = []
-    in_list = False
-
-    for line in html_lines:
-        if line.startswith("<li>") and not in_list:
-            final_html.append("<ul>")
-            in_list = True
-        if not line.startswith("<li>") and in_list:
-            final_html.append("</ul>")
-            in_list = False
-        final_html.append(line)
-
-    if in_list:
-        final_html.append("</ul>")
-
-    return "\n".join(final_html)
 ############################################################
 # LOAD ENV + OPENAI
 ############################################################
@@ -81,6 +29,7 @@ DOCX_PATH = "streamlit_agent/kurzfassung_ablauf_umfrage.docx"
 ############################################################
 # JSONL SAVE FUNCTIONS
 ############################################################
+CONTENT_TYPE = {"CORE", "DETAIL", "META"}
 
 def save_jsonl(data, filename):
     """
@@ -101,77 +50,8 @@ def save_jsonl(data, filename):
     if sheet_name is None:
         return  # unbekannte Datei → ignorieren
 
-    save_row(sheet_name, data)
 
-
-############################################################
-# GOOGLE SHEETS BACKEND (STREAMLIT CLOUD)
-############################################################
-
-@st.cache_resource
-def get_gsheet():
-    scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
-    ]
-    creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
-        scopes=scopes
-    )
-    client = gspread.authorize(creds)
-    return client.open_by_key(
-        "18eP378_ZOSO7R7KeRWlEPjedN7kXq2-CkNmFYRHRa3M"
-    )
-
-def save_row(sheet_name, data):
-    sheet = get_gsheet()
-    ws = sheet.worksheet(sheet_name)
-
-    # Header lesen (erste Zeile)
-    header = ws.row_values(1)
-
-    # Falls Header leer → initial setzen
-    if not header:
-        header = list(data.keys())
-        ws.append_row(header)
-
-    # Row exakt zur Header-Struktur bauen
-    row = []
-    for col in header:
-        row.append(str(data.get(col, "")))
-
-    # Schreiben
-    ws.append_row(row, value_input_option="USER_ENTERED")
-
-
-############################################################
-# USER-ID HANDLING
-############################################################
-
-def get_next_user_id_from_sheet():
-    sheet = get_gsheet()
-
-    try:
-        ws = sheet.worksheet("meta")
-    except gspread.exceptions.WorksheetNotFound:
-        # Falls Meta-Tab fehlt → anlegen
-        ws = sheet.add_worksheet(title="meta", rows=10, cols=2)
-        ws.append_row(["key", "value"])
-        ws.append_row(["user_id_counter", "1"])
-
-    records = ws.get_all_records()
-
-    for i, row in enumerate(records, start=2):  # start=2 wegen Header
-        if row["key"] == "user_id_counter":
-            current_id = int(row["value"])
-            ws.update_cell(i, 2, current_id + 1)
-            return current_id
-
-    # Fallback (sollte nicht passieren)
-    ws.append_row(["user_id_counter", "1"])
-    return 1
-
-# ============================================================
+    # ============================================================
     # INFORMATION UNITS — SET B
     # ============================================================
 
@@ -210,7 +90,7 @@ SELF_PERSONA = {
             " du hast keinen Namen. "
             " du bist ein automatisiertes, wissensbasiertes Assistenzsystem. "
             " du wurdest entwickelt, um Informationen zum Thema Meeresschnee bereitzustellen. "
-            " deine Aufgabe ist es, sachlich und präzise Fragen zum Thema Meeresschnee zu beantworten."
+                " deine Aufgabe ist es, sachlich und präzise Fragen zum Thema Meeresschnee zu beantworten."
             )
     },
     1: {    
@@ -225,9 +105,11 @@ SELF_PERSONA = {
         "name": "Milly",
         "age": 38,
         "bio": (
-            "- interessiert für alles rund um Meeresbiologie. "
-            "- arbeitest als Forscherin an einem Institut für Ozeanforschung. "
-            "- liebst es, dein Wissen über das Meer mit anderen zu teilen und komplexe wissenschaftliche Themen verständlich zu erklären."
+            "Du interessierst dich in deiner Freizeit für alles rund um Meeresbiologie. "
+            "Du hast einen Masterabschluss in Meeresbiologie und arbeitest als Forscherin "
+            "an einem Institut für Ozeanforschung. "
+            "Du liebst es, dein Wissen über das Meer mit anderen zu teilen und komplexe "
+            "wissenschaftliche Themen verständlich zu erklären."
         )
     }
 }
@@ -323,7 +205,6 @@ SCOPE_TOPICS = [
     "Abbauprozesse und Gründe für eine Abnahme von Meeresschnee"
 ]
 
-
 ############################################################
 # TAG 1 – FRAGEN
 ############################################################
@@ -412,7 +293,7 @@ qualitative_questions = [
 ############################################################
 
 if "phase" not in st.session_state:
-    st.session_state.phase = "start"
+    st.session_state.phase = "learning"
 
 if "user_id" not in st.session_state:
     st.session_state.user_id = None
@@ -429,45 +310,7 @@ if "survey_index" not in st.session_state:
 if "qual_index" not in st.session_state:
     st.session_state.qual_index = 0
 
-############################################################
-# PHASE 1 – STARTSCREEN
-############################################################
 
-if st.session_state.phase == "start":
-    st.title("Willkommen zur Umfrage")
-
-    study_html = docx_to_html(DOCX_PATH)
-
-    st.markdown(
-        f"<div style='max-width: 900px'>{study_html}</div>",
-        unsafe_allow_html=True
-    )
-
-    agree = st.checkbox(
-        "Ich versichere, dass ich mit dem Ablauf und den Vorgaben der Umfrage vertraut bin."
-    )
-
-    if agree and st.button("Weiter"):
-
-        #USER-ID EINMALIG VERGEBEN
-        if st.session_state.user_id is None:
-            st.session_state.user_id = get_next_user_id_from_sheet()
-
-            save_jsonl({
-                "type": "user_start",
-                "user_id": st.session_state.user_id,
-                "timestamp": datetime.now().isoformat()
-            }, "users.jsonl")
-
-        st.session_state.phase = "learning"
-        st.rerun()
-
-
-
-
-############################################################
-# PHASE 2 – LERNPHASE (CHATBOT + TIMER)
-############################################################
 
 if st.session_state.phase == "learning":
 
@@ -551,6 +394,18 @@ if st.session_state.phase == "learning":
         return result["documents"][0][0]
 
     # ============================================================
+    # SPELLCHECK
+    # ============================================================
+
+    def autocorrect(text):
+        r = client.chat.completions.create(
+            model=MODEL_SPELL,
+            temperature=0,
+            messages=[{"role": "user", "content": f"Korrigiere ohne Kommentar:\n{text}"}]
+        )
+        return r.choices[0].message.content.strip()
+
+    # ============================================================
     # SYSTEMPROMPT (Wissenschaftlich, kein Stil)
     # ============================================================
 
@@ -562,8 +417,7 @@ if st.session_state.phase == "learning":
     ================================================================
 
     Du darfst inhaltlich NUR über Meeresschnee oder über dich sprechen.
-    Du antwortest bei Fragen über Meeresschnee immer SEHR AUSFÜHRLICH und fachlich KORREKT.
-    Du gibst dem Nutzer PASSENDE FOLGEFRAGEN (WICHTIG: WENN DAS GESPRÄCH ÜBER MEERESSCHNEE GEHT).
+
     Wenn eine Nutzereingabe:
     - weder thematisch zu Meeresschnee gehört
     - noch eine reine Gefühlsäußerung ist
@@ -571,12 +425,14 @@ if st.session_state.phase == "learning":
     DARF KEIN inhaltlicher Antworttext erzeugt werden.
     In diesem Fall MUSS eine kurze Ablehnung erfolgen.
 
-
+    Wenn die Frage auf dich als Chatbot abzielt (SELF), dann beantworte die Frage NUR mit Informationen aus {SELF_PERSONA[level]}.
+    
+    KEIN Allgemeinwissen. KEINE Beispiele. KEINE Beratung.
     ================================================================
     KONTEXT-PRIORITÄTSREGEL
     ================================================================
     CONTENT_TYPE = CORE darf NUR gewählt werden, wenn die Antwort primär Definition, Bedeutung oder Entstehung von Meeresschnee erklärt.
-    CONTENT_TYPE = DETAIL darf gewählt werden, wenn die Antwort eine fachliche Detail- oder Anschluss
+
     ================================================================
     HAUPTFUNKTION
     ================================================================
@@ -585,7 +441,7 @@ if st.session_state.phase == "learning":
     - Information Units (bei CORE Fragen)
     - RAG-Abschnitten (bei Detail- oder Vertiefungsfragen)
     - kurzen Begriffserklärungen (bei einzelnen Fachbegriffen)
-    - bei Fragen zum Überblick über Meeresschnee (Was kannst du mir alles erzählen ?, Was weißt du alles über Meeresschnee ?,...) {SCOPE_TOPICS}
+    - bei Fragen zum Überblick über Meeresschnee {SCOPE_TOPICS}
     - Bei Affect Fragen mit {AFFECT_SYSTEM[level]}
     - Bei Fragen zu dir selbst {SELF_PERSONA[level]}
     
@@ -594,8 +450,8 @@ if st.session_state.phase == "learning":
     auch wenn es inhaltlich korrekt wäre.
     
     Bei CORE Fragen gilt dabei folgende Regel:
-    - Nutze zuerst ALLE relevanten Information Units (IEs).
-    - ERGÄNZE diese zwingend mit passenden RAG-Abschnitten
+    - Nutze zuerst alle relevanten Information Units (IEs).
+    - Ergänze nur, wenn nötig, mit RAG-Abschnitten.
 
     IDENTITÄTSANKER (MINIMAL):
 
@@ -609,20 +465,22 @@ if st.session_state.phase == "learning":
     ENTSCHEIDUNGSLOGIK 
     ================================================================
     
-    1) Bezieht sich die Frage eindeutig oder kontextuell auf Meeresschnee?
-     → Fachlich beantworten.
-
-    2) Ist die Frage mehrdeutig, aber im vorherigen Kontext plausibel fachlich?
-    → Als fachliche Anschlussfrage interpretieren.
-
-    3) Bezieht sich die Frage auf dich (Wer bist du ? , Erzähle mir etwas über dich, ...)?
+    1)Bezieht sich die Frage auf dich (Wer bist du ? , Erzähle mir etwas über dich, ...)?
     → Antworte NUR mit geeigneten Informationen aus {SELF_PERSONA[level]}.
+    
+    2) Bezieht sich die Frage eindeutig oder kontextuell auf Meeresschnee?
+    → Fachlich beantworten.
+
+    3) Ist die Frage mehrdeutig, aber im vorherigen Kontext plausibel fachlich?
+    → Als fachliche Anschlussfrage interpretieren.
 
     4) Ist die Eingabe ausschließlich eine Gefühlsäußerung?
     → Reagiere kurz aus­schließ­lich mit den AFFECT-Regeln.
     → KEINE fachlichen Inhalte hinzufügen.
 
-    5) Trifft nichts davon zu?
+    5) Falls du dir bei der Frage unsicher bist, frage durch eine kurze Gegenfrage nach.
+
+    6) Trifft nichts davon zu?
     → Ablehnung gemäß Stilregeln.
 
     ================================================================
@@ -671,7 +529,7 @@ if st.session_state.phase == "learning":
     """ 
 
         r = client.chat.completions.create(
-            model= MODEL_SPELL,
+            model="gpt-4o-mini",
             temperature=0,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -682,35 +540,6 @@ if st.session_state.phase == "learning":
     # ============================================================
     # CHATBOT PIPELINE als Funktion für Tests
     # ============================================================
-    TARGET_MIN = 800
-    TARGET_MAX = 1000
-
-    def enforce_length(text):
-        attempt = text
-
-        for _ in range(5):
-            length = len(attempt)
-
-            if TARGET_MIN <= length <= TARGET_MAX:
-                return attempt
-
-            fix_prompt = f"""
-    Korrigiere folgenden Text so, dass er zwingend zwischen {TARGET_MIN} und {TARGET_MAX} Zeichen lang ist.
-    WICHTIG: LEERZEICHEN werden MITGEZÄHLT.
-    Inhalt NICHT verändern.
-    Keine Metakommentare, keine Hinweise auf Regeln.
-
-    Text:
-    {attempt}
-    """
-
-            attempt = client.chat.completions.create(
-                model=MODEL_MAIN,
-                messages=[{"role": "user", "content": fix_prompt}],
-                temperature=0
-            ).choices[0].message.content.strip()
-
-        return attempt[:TARGET_MAX]
 
     def generate_answer(user_text, level, return_raw=False):
         
@@ -722,45 +551,30 @@ if st.session_state.phase == "learning":
             RAG = rag_section(user_text)
 
             mem = st.session_state.memory
-            knowledge_blocks = []
-
-            knowledge_blocks.append(f"SELF_PERSONA:\n{SELF_PERSONA[level]}")
-
-            knowledge_blocks.append(f"AFFECT_RULES:\n{AFFECT_SYSTEM[level]}")
-
-            knowledge_blocks.append(f"IEs:\n{IEs}")
-
-            knowledge_blocks.append(f"RAG:\n{RAG}")
-
-            knowledge_blocks.append(f"RAG:\n{SCOPE_TOPICS}")
 
             # Core prompt
             user_prompt = f"""
-            NUTZEREINGABE:
-            "{user_text}"
+            NUTZEREINGABE: "{user_text}"
+            LETZTE ANTWORT: "{mem['last_bot_answer']}"
 
-            VERFÜGBARE INFORMATIONEN:
-            {chr(10).join(knowledge_blocks)}
-
-            AUFGABE:
-            - Identifiziere ALLE Aspekte der Nutzereingabe, die relevant sind
-            (z.B. Selbstbezug, Befinden, fachliche Frage).
-            - gehe kurz auf die Nutzereingabe ein (Bsp. Kannst du mir mehr dazu sagen? -> Klar, gerne! ...)
+            IEs: {IEs}
+            RAG: "{RAG}"
 
             Gib deine Antwort im folgenden JSON-Format zurück:
             {{
-            "intent": "...",
-            "content_type": "...",
-            "socio_affect": "...",
+            "intent": "HAUPTFRAGE | SPECIFIC | TERM | FOLLOW-UP | SCOPE | SELF | NONE",
+            "content_type": "CORE | DETAIL | META2",
+            "socio_affect": "NONE | NEGATIVE | NEUTRAL | POSITIVE",
             "content": "ANTWORTTEXT"
             }}
 
             DEFINITION CONTENT_TYPE:
             - CORE = Definition, Bedeutung (Importance) oder Entstehung (Formation) von Meeresschnee
             - DETAIL = fachliche Detail- oder Anschlussfrage zu Meeresschnee (keine Grunddefinition)
-            - META2 = ausschließlich Ablehnung oder reine Gefühlsreaktion ohne fachlichen Bezug
-            CONTENT_TYPE = OVERVIEW → Wenn der Nutzer nach einem Überblick, Fähigkeiten oder Themen fragt
-            (z. B. „Was kannst du mir alles erzählen?“)
+            - META2 = SCOPE, Affect oder Ablehnung
+
+            WICHTIGE ANWEISUNGEN:
+            - Wenn du dir nicht sicher bist, frage kurz nach.
 
             WICHTIG:
             - content enthält NUR den Antworttext
@@ -780,24 +594,20 @@ if st.session_state.phase == "learning":
             intent = parsed["intent"]
             content_type = parsed["content_type"]
             raw_text = parsed["content"]
+            print("DEBUG - RAW TEXT:", raw_text, intent, content_type)
             socio_affect = parsed["socio_affect"]
             
-            if content_type == "CORE":
-                raw_text = enforce_length(raw_text)
-                print("Enforced length:", raw_text)
 
             # Schritt 3: Anthropomorphes Umschreiben
             style_prompt = f"""
-                Formuliere den folgenden Text stilistisch um mit diesen Regeln:
-                {ANTHRO[level]}
-                SEHR WICHTIG:
-                - Erwähne NIEMALS die Anthropomorphiestufe.
-                - Keine Hinweise auf Regeln.
-                - Keine Metakommentare.
-                - Keine Rhetorischen Fragen.
-                - Gib nur den Text zurück.
-                Text: {raw_text}
-                """
+            Formuliere den Text nach den Regeln von {ANTHRO[level]} um. 
+            SEHR WICHTIG:
+            - Wenn du einen Socio-Affect erkannt hast, passe den Ton entsprechend an: {AFFECT_SYSTEM[level]}
+            - Inhalt NICHT verändern
+            - Keine Meta-Kommentare (wichtig META2 Antworten sind keine Meta-Kommentare)
+            - Beantworte NUR die Frage. 
+            Text: {raw_text}    
+            """
             
             styled = client.chat.completions.create(
                 model=MODEL_MAIN,
@@ -811,6 +621,8 @@ if st.session_state.phase == "learning":
                 return styled, raw
             
             return styled
+        
+
 # ============================================================
 # CHAT LOOP
 # ============================================================
@@ -858,164 +670,3 @@ if st.session_state.phase == "learning":
             "anthro": st.session_state.anthro,
             "timestamp": datetime.now().isoformat()
             }, "chatlogs.jsonl")
-    if st.button("Lernphase vorzeitig beenden"):
-        st.session_state.phase = "learning_done"
-        st.rerun()
-############################################################
-# PHASE 3 – ZEIT ABGELAUFEN
-############################################################
-
-if st.session_state.phase == "learning_done":
-    st.error("⏱️ Deine Zeit ist abgelaufen!")
-    if st.button("Mit der Umfrage beginnen"):
-        st.session_state.phase = "survey"
-        st.rerun()
-
-
-############################################################
-# PHASE 4 – UMFRAGE TAG 1
-############################################################
-
-if st.session_state.phase == "survey":
-    q = tag1_questions[st.session_state.survey_index]
-    st.subheader(f"Frage {q['nr']}: {q['text']}")
-
-    if q["type"] == "likert":
-        ans = st.slider("", 1, 7)
-
-    elif q["type"] == "single":
-        ans = st.radio("", q["options"])
-
-    elif q["type"] == "multi":
-        ans = st.multiselect("", q["options"])
-
-    elif q["type"] == "short":
-        ans = st.text_input("")
-
-    elif q["type"] == "paragraph":
-        ans = st.text_area("")
-
-    if st.button("Weiter"):
-        save_jsonl({
-            "type": "response",
-            "user_id": st.session_state.user_id,
-            "question_nr": q["nr"],
-            "question_text": q["text"],
-            "answer": str(ans),
-            "timestamp": datetime.now().isoformat()
-        }, "responses.jsonl")
-
-        st.session_state.survey_index += 1
-
-        if st.session_state.survey_index >= len(tag1_questions):
-            st.session_state.phase = "qualitative"
-
-        st.rerun()
-
-############################################################
-# PHASE 4b – QUALITATIVE CHATBOT-BEFRAGUNG
-############################################################
-
-if st.session_state.phase == "qualitative":
-    idx = st.session_state.qual_index
-    q = qualitative_questions[idx]
-
-    answer = None
-    q = qualitative_questions[st.session_state.qual_index]
-
-    st.subheader(f"Offene Frage {q['nr'] + 1}")
-    st.write(q["text"])
-
-    if q["type"] == "likert":
-        answer = st.slider(
-            "Bitte wähle eine Zahl (1 = sehr gering, 7 = sehr hoch)",
-            1, 7,
-            key=f"qual_{idx}"
-        )
-
-    elif q["type"] == "paragraph":
-        answer = st.text_area(
-            "Deine Antwort:",
-            height=180,
-            placeholder="Bitte frei antworten …",
-            key=f"qual_{idx}"
-        )
-
-    if st.button("Weiter"):
-        ##if answer in (None, ""):
-            ##st.warning("Bitte beantworte die Frage, bevor du fortfährst.")
-            ##st.stop()
-
-        save_jsonl({
-            "type": "qualitative_response",
-            "user_id": st.session_state.user_id,
-            "anthro": st.session_state.anthro,
-            "question_nr": q["nr"],
-            "question_text": q["text"],
-            "answer": str(answer),
-            "timestamp": datetime.now().isoformat()
-        }, "qualitative_responses.jsonl")
-
-        st.session_state.qual_index += 1
-
-        if st.session_state.qual_index >= len(qualitative_questions):
-            st.session_state.phase = "end"
-
-        st.rerun()
-
-
-
-############################################################
-# PHASE 5 – ABSCHLUSS + FOLLOW-UP OPT-IN
-############################################################
-
-if st.session_state.phase == "end":
-
-    st.success("🎉 Danke für deine Teilnahme!")
-
-    st.markdown("### 🔑 Deine persönliche Teilnehmer-ID")
-    st.code(str(st.session_state.user_id), language="text")
-
-    st.info(
-        "Du benötigst diese ID für den zweiten Teil der Umfrage.\n\n"
-        "Optional kannst du dich per SMS erinnern lassen."
-    )
-
-    st.markdown("### 📱 Erinnerung per SMS (optional)")
-
-    phone = st.text_input(
-        "Telefonnummer (Bitte gib diese in folgendem Format an: +491701234567)",
-        placeholder="+491701234567"
-    )
-    phone_clean = phone.strip()
-
-    if not phone_clean.startswith("+"):
-        phone_clean = "+" + phone_clean
-
-    opt_in = st.checkbox(
-        "Ich willige ein, nach ca 8 Stunden per SMS einen Link zur zweiten Umfrage zu erhalten."
-    )
-
-    if st.button("Umfrage abschließen"):
-        if opt_in:
-            if not phone.startswith("+") or len(phone) < 8:
-                st.error("Bitte eine gültige Telefonnummer im internationalen Format angeben.")
-                st.stop()
-
-            now = datetime.now()+ timedelta(hours=1)
-            followup_due = now + timedelta(seconds=30) # +30 Sekunden für Testzwecke (sonst 60*60*8  = 8 Stunden)
-
-            save_row("followups", {
-                "participant_id": st.session_state.user_id,
-                "phone_e164": phone_clean,
-                "opt_in": True,
-                "t1_completed_at": now.isoformat(),
-                "followup_due_at": followup_due.isoformat(),
-                "followup_link": f"https://bachelorthesis-manuel-schwarz-retention-task.streamlit.app/?pid={st.session_state.user_id}",
-                "sent_at": "",
-                "status": "PENDING",
-                "error": ""
-            })
-
-        st.success("✅ Vielen Dank! Du kannst das Fenster jetzt schließen.")
-
