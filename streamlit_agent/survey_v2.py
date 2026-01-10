@@ -480,7 +480,7 @@ if st.session_state.phase == "learning":
 
     if st.session_state.timer_started:
         elapsed = time.time() - st.session_state.start_time
-        remaining = max(0, 300 - elapsed)
+        remaining = max(0, 28800 - elapsed) # 8 Stunden
 
         mins = int(remaining) // 60
         secs = int(remaining) % 60
